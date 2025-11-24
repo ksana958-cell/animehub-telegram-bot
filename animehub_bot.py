@@ -165,17 +165,34 @@ def build_section_keyboard(section: str | None = None) -> InlineKeyboardMarkup:
 
 def build_title_keyboard(title_id: str, user_data: dict) -> InlineKeyboardMarkup:
     favs = user_data.get("favorites", [])
-    if title_id in favs:
-        text = "⭐ Убрать из избранного"
-        cb = f"fav_remove:{title_id}"
+    is_fav = title_id in favs
+
+    title = next((t for t in TITLES if t["id"] == title_id), None)
+
+    buttons = []
+
+    # ▶ Смотреть (если есть URL)
+    if title and title.get("watch_url"):
+        buttons.append([
+            InlineKeyboardButton("▶ Смотреть", url=title["watch_url"])
+        ])
+
+    # ⭐ Избранное
+    if is_fav:
+        buttons.append([
+            InlineKeyboardButton("⭐ Убрать из избранного", callback_data=f"fav_remove:{title_id}")
+        ])
     else:
-        text = "⭐ В избранное"
-        cb = f"fav_add:{title_id}"
-    keyboard = [
-        [InlineKeyboardButton(text, callback_data=cb)],
-        [InlineKeyboardButton("⬅️ Главное меню", callback_data="main_menu")],
-    ]
-    return InlineKeyboardMarkup(keyboard)
+        buttons.append([
+            InlineKeyboardButton("⭐ В избранное", callback_data=f"fav_add:{title_id}")
+        ])
+
+    # ⬅️ Главное меню
+    buttons.append([
+        InlineKeyboardButton("⬅️ Главное меню", callback_data="main_menu")
+    ])
+
+    return InlineKeyboardMarkup(buttons)
 
 def build_premium_card(title: dict) -> str:
     return (
