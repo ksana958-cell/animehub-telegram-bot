@@ -3,11 +3,13 @@ from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
 )
+from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
     CommandHandler,
     CallbackQueryHandler,
     ContextTypes,
+    Defaults,
 )
 import json
 import os
@@ -15,7 +17,7 @@ import random
 import time
 
 # 🔧 НАСТРОЙКИ — ЗАПОЛНИ СВОИ ДАННЫЕ
-BOT_TOKEN = "ВСТАВЬ_СЮДА_СВОЙ_ТОКЕН"
+BOT_TOKEN = "8259407812:AAHkRjdYPoO8wMt-yjoxdLGJhfV-wgFYp34"
 CHANNEL_USERNAME = "@AnimeHUB_Dream"  # юзернейм канала с @
 DATA_FILE = "bot_data.json"
 ADMINS = []  # сюда можно добавить свой Telegram ID: [123456789]
@@ -362,9 +364,7 @@ def build_title_keyboard(title_id: str, user_data: dict) -> InlineKeyboardMarkup
     ]
     return InlineKeyboardMarkup(keyboard)
 
-
 def build_premium_card(title: dict) -> str:
-    """Формирует премиальную текстовую карточку тайтла в HTML-формате."""
     return (
         f"🎬 ⭐ <b>{title['name']}</b>\n"
         f"{title.get('season', 'Сезон 1')} · ТВ-сериал\n\n"
@@ -506,10 +506,6 @@ async def show_profile(
     else:
         await update.message.reply_text(text, reply_markup=kb)
 
-
-# 🧵 HANDLERS
-
-
 async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = load_data()
     args = context.args
@@ -567,9 +563,7 @@ async def handle_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     text = "\n".join(parts)
     await update.message.reply_text(text)
 
-
 async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Команда /title <id> — отправляет премиальную карточку тайтла."""
     if not context.args:
         await update.message.reply_text(
             "Использование:\n/title <id>\n\n"
@@ -588,7 +582,6 @@ async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     card = build_premium_card(title)
     await update.message.reply_text(card)
-
 
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = load_data()
@@ -635,14 +628,15 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             await query.edit_message_text("Тайтл не найден.")
         return
 
-
 def main() -> None:
-    application = (
-        Application.builder()
-        .token(BOT_TOKEN)
-        .parse_mode("HTML")  # важно для форматирования карточек
-        .build()
-    )
+    defaults = Defaults(parse_mode=ParseMode.HTML)
+
+application = (
+    Application.builder()
+    .token(BOT_TOKEN)
+    .build()
+)
+application.bot.default_parse_mode = "HTML"
 
     application.add_handler(CommandHandler("start", handle_start))
     application.add_handler(CommandHandler("menu", handle_menu))
@@ -653,7 +647,6 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(handle_buttons))
 
     application.run_polling()
-
 
 if __name__ == "__main__":
     main()
