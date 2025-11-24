@@ -629,14 +629,15 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
 def main() -> None:
+    # Значение по умолчанию: все сообщения в HTML-разметке
     defaults = Defaults(parse_mode=ParseMode.HTML)
 
-application = (
-    Application.builder()
-    .token(BOT_TOKEN)
-    .build()
-)
-application.bot.default_parse_mode = "HTML"
+    application = (
+        Application.builder()
+        .token(BOT_TOKEN)
+        .defaults(defaults)   # привязываем defaults к приложению
+        .build()
+    )
 
     application.add_handler(CommandHandler("start", handle_start))
     application.add_handler(CommandHandler("menu", handle_menu))
