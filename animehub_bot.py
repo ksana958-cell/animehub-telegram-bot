@@ -25,7 +25,7 @@ ADMINS = []  # сюда можно добавить свой Telegram ID: [12345
 
 # 📚 БАЗОВЫЙ СПИСОК ТАЙТЛОВ (можно дополнять)
 TITLES = [
-    {
+ {
     "id": "solo_leveling",
     "name": "Поднятие уровня в одиночку",
     "season": "Сезоны 1–2",
@@ -39,11 +39,9 @@ TITLES = [
     "shiki": "8.45",
     "imdb": "8.2",
     "kp": "8.0",
-    "genres": "#Экшен #Фэнтези #Система #Демоны #Охотники",
-    "playlist": (
-        "📂 Сезоны 1–2 — приватный плейлист (4K Upscale)\n"
-        "https://t.me/+cKLGtPy54BY4NzA6"
-    ),
+    "genres": "#Экшен #Фэнтези #Система #Охотники #Демоны",
+    "playlist": "Сезоны 1–2",
+    "watch_url": "https://t.me/+cKLGtPy54BY4NzA6",  # ← вот это главное
     "desc": (
         "Самый слабый охотник Сон Джин-Ву получает уникальную систему прокачки, "
         "которая позволяет ему становиться сильнее без ограничений. "
@@ -164,8 +162,26 @@ def build_section_keyboard(section: str | None = None) -> InlineKeyboardMarkup:
 
 
 def build_title_keyboard(title_id: str, user_data: dict) -> InlineKeyboardMarkup:
+    title = next((t for t in TITLES if t["id"] == title_id), None)
+
     favs = user_data.get("favorites", [])
-    is_fav = title_id in favs
+    if title_id in favs:
+        fav_text = "⭐ Убрать из избранного"
+        fav_cb = f"fav_remove:{title_id}"
+    else:
+        fav_text = "⭐ В избранное"
+        fav_cb = f"fav_add:{title_id}"
+
+    keyboard = []
+
+        # ▶️ Смотреть — только если есть watch_url
+    if title and "watch_url" in title:
+        keyboard.append([
+            InlineKeyboardButton(
+                "▶️ Смотреть",
+                url=title["watch_url"]
+            )
+        ])
 
     title = next((t for t in TITLES if t["id"] == title_id), None)
 
