@@ -16,7 +16,7 @@ from telegram.ext import (
 )
 import json
 import os
-import random
+    import random
 import time
 
 BOT_TOKEN = "8259407812:AAHkRjdYPoO8wMt-yjoxdLGJhfV-wgFYp34"
@@ -92,11 +92,23 @@ ACCESS_CODES = {
     "AHFRIENDS": "friend",
 }
 
+
 def load_data():
     if not os.path.exists(DATA_FILE):
-        return {"users": {}, "stats": {"sections": {}, "random_used": 0, "started": 0}}
+        return {
+            "users": {},
+            "stats": {"sections": {}, "random_used": 0, "started": 0},
+            "friend_requests": {},
+        }
     with open(DATA_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+    if "stats" not in data:
+        data["stats"] = {"sections": {}, "random_used": 0, "started": 0}
+    if "friend_requests" not in data:
+        data["friend_requests"] = {}
+    if "users" not in data:
+        data["users"] = {}
+    return data
 
 
 def save_data(data):
@@ -113,8 +125,19 @@ def get_user(data, user_id):
             "access": "free",
             "favorites": [],
             "watched_150": [],
+            "friends": [],
             "created_at": int(time.time()),
         }
+    else:
+        u = data["users"][uid]
+        if "favorites" not in u:
+            u["favorites"] = []
+        if "watched_150" not in u:
+            u["watched_150"] = []
+        if "friends" not in u:
+            u["friends"] = []
+        if "access" not in u:
+            u["access"] = "free"
     return data["users"][uid]
 
 
@@ -304,12 +327,14 @@ async def show_profile(
     user_data = get_user(data, user_id)
     fav_count = len(user_data.get("favorites", []))
     watched_150 = len(user_data.get("watched_150", []))
+    friends_count = len(user_data.get("friends", []))
     access = user_data.get("access", "free")
     text = (
         "👤 Твой профиль в AnimeHUB | Dream Bot\n\n"
         f"🔑 Уровень доступа: {access}\n"
         f"⭐ Избранных тайтлов: {fav_count}\n"
-        f"🏆 Прогресс по «150 лучшим аниме»: {watched_150} тайтлов\n\n"
+        f"🏆 Прогресс по «150 лучшим аниме»: {watched_150} тайтлов\n"
+        f"🤝 Друзей: {friends_count}\n\n"
         "Используй разделы бота, чтобы находить новые аниме и добавлять их в избранное."
     )
     kb = InlineKeyboardMarkup(
@@ -323,12 +348,36 @@ async def show_profile(
 
 async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = load_data()
+    user_id = update.effective_user.id
+    get_user(data, user_id)
+    save_data(data)
+
     args = context.args
-    section = args[0].strip().lower() if args else None
-    if section in SECTION_TEXTS:
-        await send_section(update, context, data, section, from_callback=False)
-    else:
-        await show_main_menu(update, context, data)
+    if args:
+        arg0 = args[0].strip().lower()
+        if arg0 == "activate":
+            text = (
+                "⚡ Профиль активирован!\n\n"
+                f"Твой Telegram ID: <code>{user_id}</code>\n\n"
+                "Теперь ты можешь:\n"
+                "• Добавлять друзей: /friend_invite &lt;ID&gt;\n"
+                "• Смотреть входящие заявки: /friend_requests\n"
+                "• Список друзей: /friend_list\n\n"
+                "А ещё — пользоваться меню бота для навигации по аниме."
+            )
+            kb = InlineKeyboardMarkup(
+                [[InlineKeyboardButton("📚 Открыть главное меню", callback_data="main_menu")]]
+            )
+            if update.message:
+                await update.message.reply_text(text, reply_markup=kb)
+            else:
+                await update.callback_query.edit_message_text(text, reply_markup=kb)
+            return
+        if arg0 in SECTION_TEXTS:
+            await send_section(update, context, data, arg0, from_callback=False)
+            return
+
+    await show_main_menu(update, context, data)
 
 
 async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -446,8 +495,6 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
 
-# === /post: пошаговое создание поста ===
-
 POST_PHOTO, POST_CAPTION, POST_DESC, POST_WATCH = range(4)
 
 
@@ -549,6 +596,212 @@ async def post_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     return ConversationHandler.END
 
 
+async def handle_myid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.effective_user.id
+    text = (
+        f"Твой Telegram ID: <code>{user_id}</code>\n\n"
+        "Отправь его другу, чтобы он смог добавить тебя в друзья:\n"
+        "/friend_invite "
+        f"{user_id}"
+    )
+    await update.message.reply_text(text)
+
+
+async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    from_id = update.effective_user.id
+    if not context.args:
+        await update.message.reply_text(
+            "Использование:\n/friend_invite <ID друга>\n\n"
+            "ID друг может узнать командой /myid у себя."
+        )
+        return
+    try:
+        target_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("ID должен быть числом.")
+        return
+
+    if target_id == from_id:
+        await update.message.reply_text("Нельзя добавить в друзья самого себя.")
+        return
+
+    from_user = get_user(data, from_id)
+    target_user = get_user(data, target_id)
+
+    from_uid = str(from_id)
+    target_uid = str(target_id)
+
+    if target_uid in from_user.get("friends", []):
+        await update.message.reply_text("Этот пользователь уже есть у тебя в друзьях.")
+        return
+
+    reqs = data.get("friend_requests", {})
+    lst = reqs.get(target_uid, [])
+    if from_uid in lst:
+        await update.message.reply_text("Приглашение этому пользователю уже отправлено.")
+        return
+
+    lst.append(from_uid)
+    reqs[target_uid] = lst
+    data["friend_requests"] = reqs
+    save_data(data)
+
+    await update.message.reply_text(
+        "✅ Приглашение в друзья отправлено.\n"
+        "Скажи другу запустить бота и набрать /friend_requests, чтобы принять."
+    )
+
+
+async def handle_friend_requests(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    user_id = update.effective_user.id
+    uid = str(user_id)
+    reqs = data.get("friend_requests", {}).get(uid, [])
+    if not reqs:
+        await update.message.reply_text("У тебя нет входящих приглашений в друзья.")
+        return
+
+    lines = ["📨 Входящие приглашения в друзья:"]
+    for rid in reqs:
+        lines.append(
+            f"• <a href='tg://user?id={rid}'>Пользователь {rid}</a> — принять: "
+            f"/friend_accept {rid}"
+        )
+    text = "\n".join(lines)
+    await update.message.reply_text(text)
+
+
+async def handle_friend_accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    user_id = update.effective_user.id
+    uid = str(user_id)
+
+    if not context.args:
+        await update.message.reply_text(
+            "Использование:\n/friend_accept <ID>\n\n"
+            "Посмотри список входящих заявок: /friend_requests"
+        )
+        return
+    try:
+        other_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("ID должен быть числом.")
+        return
+
+    other_uid = str(other_id)
+    reqs = data.get("friend_requests", {})
+    lst = reqs.get(uid, [])
+
+    if other_uid not in lst:
+        await update.message.reply_text("От этого пользователя нет активного приглашения.")
+        return
+
+    user_data = get_user(data, user_id)
+    other_data = get_user(data, other_id)
+
+    if other_uid not in user_data["friends"]:
+        user_data["friends"].append(other_uid)
+    if uid not in other_data["friends"]:
+        other_data["friends"].append(uid)
+
+    lst.remove(other_uid)
+    if lst:
+        reqs[uid] = lst
+    else:
+        reqs.pop(uid, None)
+    data["friend_requests"] = reqs
+
+    save_data(data)
+
+    await update.message.reply_text(
+        f"✅ Пользователь {other_id} добавлен в друзья.\n"
+        "Теперь вы можете сравнивать прогресс по аниме: /friend_vs "
+        f"{other_id}"
+    )
+
+
+async def handle_friend_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    user_id = update.effective_user.id
+    user_data = get_user(data, user_id)
+    friends = user_data.get("friends", [])
+    if not friends:
+        await update.message.reply_text(
+            "У тебя пока нет друзей в боте.\n"
+            "Отправь свой ID (/myid) другу и пусть он добавит тебя через /friend_invite."
+        )
+        return
+
+    lines = ["🤝 Твой список друзей:"]
+    for fid in friends:
+        lines.append(f"• <a href='tg://user?id={fid}'>Пользователь {fid}</a>")
+    lines.append("\nЧтобы сравнить прогресс, используй:\n/friend_vs <ID друга>")
+    text = "\n".join(lines)
+    await update.message.reply_text(text)
+
+
+async def handle_friend_vs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    user_id = update.effective_user.id
+    if not context.args:
+        await update.message.reply_text(
+            "Использование:\n/friend_vs <ID друга>\n\n"
+            "Сначала посмотри список друзей: /friend_list"
+        )
+        return
+    try:
+        other_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("ID должен быть числом.")
+        return
+
+    uid = str(user_id)
+    other_uid = str(other_id)
+
+    user_data = get_user(data, user_id)
+    other_data = get_user(data, other_id)
+
+    if other_uid not in user_data.get("friends", []):
+        await update.message.reply_text(
+            "Этот пользователь не в твоих друзьях.\n"
+            "Сначала добавь его через систему заявок."
+        )
+        return
+
+    u_fav = len(user_data.get("favorites", []))
+    o_fav = len(other_data.get("favorites", []))
+    u_150 = len(user_data.get("watched_150", []))
+    o_150 = len(other_data.get("watched_150", []))
+
+    if u_fav > o_fav:
+        fav_result = "По количеству тайтлов (избранное) побеждаешь ты."
+    elif u_fav < o_fav:
+        fav_result = "По количеству тайтлов (избранное) пока лидирует твой друг."
+    else:
+        fav_result = "По количеству тайтлов в избранном у вас ничья."
+
+    if u_150 > o_150:
+        top_result = "По «150 лучшим аниме» побеждаешь ты."
+    elif u_150 < o_150:
+        top_result = "По «150 лучшим аниме» пока лидирует твой друг."
+    else:
+        top_result = "По «150 лучшим аниме» у вас ничья."
+
+    text = (
+        "⚔ Сравнение аниме-прогресса\n\n"
+        f"Ты:\n"
+        f"• Избранных тайтлов: {u_fav}\n"
+        f"• Из «150 лучших аниме»: {u_150}\n\n"
+        f"Друг ({other_id}):\n"
+        f"• Избранных тайтлов: {o_fav}\n"
+        f"• Из «150 лучших аниме»: {o_150}\n\n"
+        f"{fav_result}\n"
+        f"{top_result}"
+    )
+    await update.message.reply_text(text)
+
+
 def main() -> None:
     defaults = Defaults(parse_mode=ParseMode.HTML)
 
@@ -585,6 +838,12 @@ def main() -> None:
     application.add_handler(CommandHandler("profile", handle_profile))
     application.add_handler(CommandHandler("stats", handle_stats))
     application.add_handler(CommandHandler("title", handle_title))
+    application.add_handler(CommandHandler("myid", handle_myid))
+    application.add_handler(CommandHandler("friend_invite", handle_friend_invite))
+    application.add_handler(CommandHandler("friend_requests", handle_friend_requests))
+    application.add_handler(CommandHandler("friend_accept", handle_friend_accept))
+    application.add_handler(CommandHandler("friend_list", handle_friend_list))
+    application.add_handler(CommandHandler("friend_vs", handle_friend_vs))
     application.add_handler(CallbackQueryHandler(handle_buttons))
 
     application.run_polling()
