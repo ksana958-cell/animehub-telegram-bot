@@ -126,6 +126,7 @@ def get_user(data, user_id):
             "favorites": [],
             "watched_150": [],
             "friends": [],
+            "activated": False,
             "created_at": int(time.time()),
         }
     else:
@@ -138,6 +139,8 @@ def get_user(data, user_id):
             u["friends"] = []
         if "access" not in u:
             u["access"] = "free"
+        if "activated" not in u:
+            u["activated"] = False
     return data["users"][uid]
 
 
@@ -349,33 +352,44 @@ async def show_profile(
 async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = load_data()
     user_id = update.effective_user.id
-    get_user(data, user_id)
-    save_data(data)
+    user_data = get_user(data, user_id)
 
     args = context.args
-    if args:
-        arg0 = args[0].strip().lower()
-        if arg0 == "activate":
-            text = (
-                "⚡ Профиль активирован!\n\n"
-                f"Твой Telegram ID: <code>{user_id}</code>\n\n"
-                "Теперь ты можешь:\n"
-                "• Добавлять друзей: /friend_invite &lt;ID&gt;\n"
-                "• Смотреть входящие заявки: /friend_requests\n"
-                "• Список друзей: /friend_list\n\n"
-                "А ещё — пользоваться меню бота для навигации по аниме."
-            )
-            kb = InlineKeyboardMarkup(
-                [[InlineKeyboardButton("📚 Открыть главное меню", callback_data="main_menu")]]
-            )
-            if update.message:
-                await update.message.reply_text(text, reply_markup=kb)
-            else:
-                await update.callback_query.edit_message_text(text, reply_markup=kb)
-            return
-        if arg0 in SECTION_TEXTS:
-            await send_section(update, context, data, arg0, from_callback=False)
-            return
+    if args and args[0].strip().lower() == "activate":
+        user_data["activated"] = True
+        save_data(data)
+        text = (
+            "⚡ Профиль активирован!\n\n"
+            f"Твой Telegram ID: <code>{user_id}</code>\n\n"
+            "Теперь ты можешь:\n"
+            "• Добавлять друзей: /friend_invite &lt;ID&gt;\n"
+            "• Смотреть входящие заявки: /friend_requests\n"
+            "• Список друзей: /friend_list\n\n"
+            "Нажми кнопку ниже, чтобы открыть главное меню."
+        )
+        kb = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("📚 Открыть главное меню", callback_data="main_menu")]]
+        )
+        if update.message:
+            await update.message.reply_text(text, reply_markup=kb)
+        else:
+            await update.callback_query.edit_message_text(text, reply_markup=kb)
+        return
+
+    if not user_data.get("activated", False):
+        text = (
+            "⚡ Перед началом нужно активировать профиль.\n\n"
+            "Это свяжет твой Telegram-аккаунт с прогрессом в AnimeHUB | Dream.\n\n"
+            "Нажми кнопку ниже, чтобы активировать профиль."
+        )
+        kb = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("⚡ Активировать профиль", callback_data="activate_profile")]]
+        )
+        if update.message:
+            await update.message.reply_text(text, reply_markup=kb)
+        else:
+            await update.callback_query.edit_message_text(text, reply_markup=kb)
+        return
 
     await show_main_menu(update, context, data)
 
@@ -455,6 +469,27 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await query.answer()
     data_str = query.data
 
+    user_id = update.effective_user.id
+    user_data = get_user(data, user_id)
+
+    if data_str == "activate_profile":
+        user_data["activated"] = True
+        save_data(data)
+        text = (
+            "⚡ Профиль активирован!\n\n"
+            f"Твой Telegram ID: <code>{user_id}</code>\n\n"
+            "Теперь ты можешь:\n"
+            "• Добавлять друзей: /friend_invite &lt;ID&gt;\n"
+            "• Смотреть входящие заявки: /friend_requests\n"
+            "• Список друзей: /friend_list\n\n"
+            "Нажми кнопку ниже, чтобы открыть главное меню."
+        )
+        kb = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("📚 Открыть главное меню", callback_data="main_menu")]]
+        )
+        await query.edit_message_text(text, reply_markup=kb)
+        return
+
     if data_str == "main_menu":
         await show_main_menu(update, context, data)
         return
@@ -473,8 +508,6 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     if data_str.startswith("fav_add:") or data_str.startswith("fav_remove:"):
-        user_id = update.effective_user.id
-        user_data = get_user(data, user_id)
         action, title_id = data_str.split(":", 1)
         favs = user_data.get("favorites", [])
         if action == "fav_add":
@@ -627,7 +660,7 @@ async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     from_user = get_user(data, from_id)
-    target_user = get_user(data, target_id)
+    get_user(data, target_id)
 
     from_uid = str(from_id)
     target_uid = str(target_id)
