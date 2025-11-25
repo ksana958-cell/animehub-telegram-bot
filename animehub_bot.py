@@ -25,8 +25,6 @@ DATA_FILE = "bot_data.json"
 
 ADMINS = [813738453]
 
-WATCH_URL = "https://t.me/+cKLGtPy54BY4NzA6"
-
 TITLES = [
     {
         "id": "solo_leveling",
@@ -93,22 +91,6 @@ ACCESS_CODES = {
     "AHVIP2025": "vip",
     "AHFRIENDS": "friend",
 }
-
-WATCH_BUTTON_SOLO = InlineKeyboardMarkup(
-    [
-        [
-            InlineKeyboardButton(
-                "▶ Смотреть",
-                url=WATCH_URL,
-            )
-        ]
-    ]
-)
-
-WATCH_MARKUPS = {
-    "solo_leveling": WATCH_BUTTON_SOLO,
-}
-
 
 def load_data():
     if not os.path.exists(DATA_FILE):
@@ -415,12 +397,7 @@ async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     card = build_premium_card(title)
-    markup = WATCH_MARKUPS.get(tid)
-
-    if markup:
-        await update.message.reply_text(card, reply_markup=markup)
-    else:
-        await update.message.reply_text(card)
+    await update.message.reply_text(card)
 
 
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -469,7 +446,9 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
 
-POST_PHOTO, POST_CAPTION, POST_DESC = range(3)
+# === /post: пошаговое создание поста ===
+
+POST_PHOTO, POST_CAPTION, POST_DESC, POST_WATCH = range(4)
 
 
 async def post_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -479,7 +458,7 @@ async def post_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return ConversationHandler.END
 
     await update.message.reply_text(
-        "Отправь обложку/превьюшку как фото для поста.\n\n"
+        "Шаг 1/4.\nОтправь обложку/превьюшку как фото.\n\n"
         "Если передумал — напиши /cancel."
     )
     return POST_PHOTO
@@ -494,7 +473,7 @@ async def post_get_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     context.user_data["post_photo"] = photo
 
     await update.message.reply_text(
-        "Теперь отправь текст карточки, который будет под обложкой.\n\n"
+        "Шаг 2/4.\nТеперь отправь текст карточки, который будет под обложкой.\n\n"
         "Например:\n\n"
         "Поднятие уровня в одиночку\n\n"
         "Сезоны 1–2\n"
@@ -510,7 +489,7 @@ async def post_get_caption(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     context.user_data["post_caption"] = text
 
     await update.message.reply_text(
-        "Теперь вставь ссылку на описание (Telegraph), как на скрине.\n"
+        "Шаг 3/4.\nВставь ссылку на описание (Telegraph), как на скрине.\n"
         "Если описания пока нет — напиши просто -"
     )
     return POST_DESC
@@ -521,13 +500,31 @@ async def post_get_desc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     if desc_link == "-":
         desc_link = None
 
+    context.user_data["post_desc_link"] = desc_link
+
+    await update.message.reply_text(
+        "Шаг 4/4.\nТеперь отправь ссылку, где смотреть аниме "
+        "(твой приватный канал/плейлист).\n"
+        "Если кнопка «Смотреть» не нужна — напиши -"
+    )
+    return POST_WATCH
+
+
+async def post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    watch_link = update.message.text.strip()
+    if watch_link == "-":
+        watch_link = None
+
     photo = context.user_data.get("post_photo")
     caption = context.user_data.get("post_caption", "")
+    desc_link = context.user_data.get("post_desc_link")
 
-    keyboard = [[InlineKeyboardButton("▶ Смотреть", url=WATCH_URL)]]
+    keyboard = []
+    if watch_link:
+        keyboard.append([InlineKeyboardButton("▶ Смотреть", url=watch_link)])
     if desc_link:
         keyboard.append([InlineKeyboardButton("📖 Описание", url=desc_link)])
-    markup = InlineKeyboardMarkup(keyboard)
+    markup = InlineKeyboardMarkup(keyboard) if keyboard else None
 
     await context.bot.send_photo(
         chat_id=CHANNEL_USERNAME,
@@ -538,6 +535,7 @@ async def post_get_desc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     context.user_data.pop("post_photo", None)
     context.user_data.pop("post_caption", None)
+    context.user_data.pop("post_desc_link", None)
 
     await update.message.reply_text("Пост отправлен в канал ✅")
     return ConversationHandler.END
@@ -546,6 +544,7 @@ async def post_get_desc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 async def post_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.pop("post_photo", None)
     context.user_data.pop("post_caption", None)
+    context.user_data.pop("post_desc_link", None)
     await update.message.reply_text("Создание поста отменено.")
     return ConversationHandler.END
 
@@ -571,6 +570,9 @@ def main() -> None:
             ],
             POST_DESC: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, post_get_desc)
+            ],
+            POST_WATCH: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, post_get_watch)
             ],
         },
         fallbacks=[CommandHandler("cancel", post_cancel)],
