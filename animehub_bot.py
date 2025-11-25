@@ -19,7 +19,7 @@ import os
 import random
 import time
 
-BOT_TOKEN = "8259407812:AAHkRjdYPoO8wMt-yjoxdLGJhfV-wgFYp34"
+BOT_TOKEN = "8595192008:AAFUokx5z42w-lMmlxVqrzW43tpu0U1mOGA"
 CHANNEL_USERNAME = "@AnimeHUB_Dream"
 DATA_FILE = "bot_data.json"
 
