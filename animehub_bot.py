@@ -2,7 +2,6 @@ from telegram import (
     Update,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    InputMediaPhoto,
 )
 from telegram.constants import ParseMode
 from telegram.ext import (
@@ -11,6 +10,9 @@ from telegram.ext import (
     CallbackQueryHandler,
     ContextTypes,
     Defaults,
+    ConversationHandler,
+    MessageHandler,
+    filters,
 )
 import json
 import os
@@ -21,9 +23,9 @@ BOT_TOKEN = "8259407812:AAHkRjdYPoO8wMt-yjoxdLGJhfV-wgFYp34"
 CHANNEL_USERNAME = "@AnimeHUB_Dream"
 DATA_FILE = "bot_data.json"
 
-ADMINS = ADMINS = [813738453]
+ADMINS = [813738453]
 
-SOLO_POST_COVER = "PASTE_FILE_ID_HERE"
+WATCH_URL = "https://t.me/+cKLGtPy54BY4NzA6"
 
 TITLES = [
     {
@@ -97,7 +99,7 @@ WATCH_BUTTON_SOLO = InlineKeyboardMarkup(
         [
             InlineKeyboardButton(
                 "▶ Смотреть",
-                url="https://t.me/+cKLGtPy54BY4NzA6",
+                url=WATCH_URL,
             )
         ]
     ]
@@ -467,33 +469,85 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
 
-async def post_solo_to_channel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+POST_PHOTO, POST_CAPTION, POST_DESC = range(3)
+
+
+async def post_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
     if ADMINS and user_id not in ADMINS:
         await update.message.reply_text("Эта команда только для админа.")
-        return
+        return ConversationHandler.END
 
-    title = next((t for t in TITLES if t["id"] == "solo_leveling"), None)
-    if not title:
-        await update.message.reply_text("solo_leveling не найден в списке TITLES.")
-        return
+    await update.message.reply_text(
+        "Отправь обложку/превьюшку как фото для поста.\n\n"
+        "Если передумал — напиши /cancel."
+    )
+    return POST_PHOTO
 
-    if not SOLO_POST_COVER or SOLO_POST_COVER == "PASTE_FILE_ID_HERE":
-        await update.message.reply_text(
-            "Сначала укажи SOLO_POST_COVER (file_id обложки) в коде."
-        )
-        return
 
-    caption = build_premium_card(title)
+async def post_get_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not update.message.photo:
+        await update.message.reply_text("Нужно отправить именно фото. Попробуй ещё раз.")
+        return POST_PHOTO
+
+    photo = update.message.photo[-1].file_id
+    context.user_data["post_photo"] = photo
+
+    await update.message.reply_text(
+        "Теперь отправь текст карточки, который будет под обложкой.\n\n"
+        "Например:\n\n"
+        "Поднятие уровня в одиночку\n\n"
+        "Сезоны 1–2\n"
+        "━━━▰▰▰▰▰▰▰▰\n\n"
+        "4K Upscale\n"
+        "..."
+    )
+    return POST_CAPTION
+
+
+async def post_get_caption(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    text = update.message.text
+    context.user_data["post_caption"] = text
+
+    await update.message.reply_text(
+        "Теперь вставь ссылку на описание (Telegraph), как на скрине.\n"
+        "Если описания пока нет — напиши просто -"
+    )
+    return POST_DESC
+
+
+async def post_get_desc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    desc_link = update.message.text.strip()
+    if desc_link == "-":
+        desc_link = None
+
+    photo = context.user_data.get("post_photo")
+    caption = context.user_data.get("post_caption", "")
+
+    keyboard = [[InlineKeyboardButton("▶ Смотреть", url=WATCH_URL)]]
+    if desc_link:
+        keyboard.append([InlineKeyboardButton("📖 Описание", url=desc_link)])
+    markup = InlineKeyboardMarkup(keyboard)
 
     await context.bot.send_photo(
         chat_id=CHANNEL_USERNAME,
-        photo=SOLO_POST_COVER,
+        photo=photo,
         caption=caption,
-        reply_markup=WATCH_BUTTON_SOLO,
+        reply_markup=markup,
     )
 
-    await update.message.reply_text("Пост с Solo Leveling отправлен в канал ✅")
+    context.user_data.pop("post_photo", None)
+    context.user_data.pop("post_caption", None)
+
+    await update.message.reply_text("Пост отправлен в канал ✅")
+    return ConversationHandler.END
+
+
+async def post_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data.pop("post_photo", None)
+    context.user_data.pop("post_caption", None)
+    await update.message.reply_text("Создание поста отменено.")
+    return ConversationHandler.END
 
 
 def main() -> None:
@@ -506,13 +560,29 @@ def main() -> None:
         .build()
     )
 
+    conv_post = ConversationHandler(
+        entry_points=[CommandHandler("post", post_start)],
+        states={
+            POST_PHOTO: [
+                MessageHandler(filters.PHOTO & ~filters.COMMAND, post_get_photo)
+            ],
+            POST_CAPTION: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, post_get_caption)
+            ],
+            POST_DESC: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, post_get_desc)
+            ],
+        },
+        fallbacks=[CommandHandler("cancel", post_cancel)],
+    )
+
+    application.add_handler(conv_post)
     application.add_handler(CommandHandler("start", handle_start))
     application.add_handler(CommandHandler("menu", handle_menu))
     application.add_handler(CommandHandler("code", handle_code))
     application.add_handler(CommandHandler("profile", handle_profile))
     application.add_handler(CommandHandler("stats", handle_stats))
     application.add_handler(CommandHandler("title", handle_title))
-    application.add_handler(CommandHandler("post_solo", post_solo_to_channel))
     application.add_handler(CallbackQueryHandler(handle_buttons))
 
     application.run_polling()
