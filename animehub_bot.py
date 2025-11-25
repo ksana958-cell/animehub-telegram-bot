@@ -15,20 +15,16 @@ from telegram.ext import (
 import json
 import os
 import random
-    import time
+import time
 
-# 🔧 НАСТРОЙКИ — ЗАПОЛНИ СВОИ ДАННЫЕ
 BOT_TOKEN = "8259407812:AAHkRjdYPoO8wMt-yjoxdLGJhfV-wgFYp34"
-CHANNEL_USERNAME = "@AnimeHUB_Dream"  # канал для навигации
+CHANNEL_USERNAME = "@AnimeHUB_Dream"
 DATA_FILE = "bot_data.json"
 
-# 👉 сюда ВПИШИ свой Telegram ID, чтобы только ты мог постить в канал
 ADMINS = [123456789]
 
-# 👉 сюда впиши file_id обложки Solo Leveling, когда получишь его
 SOLO_POST_COVER = "PASTE_FILE_ID_HERE"
 
-# 📚 БАЗОВЫЙ СПИСОК ТАЙТЛОВ (можно дополнять)
 TITLES = [
     {
         "id": "solo_leveling",
@@ -96,7 +92,6 @@ ACCESS_CODES = {
     "AHFRIENDS": "friend",
 }
 
-# Кнопка "Смотреть" для Solo Leveling (ссылка на приватный канал/комнату)
 WATCH_BUTTON_SOLO = InlineKeyboardMarkup(
     [
         [
@@ -108,7 +103,6 @@ WATCH_BUTTON_SOLO = InlineKeyboardMarkup(
     ]
 )
 
-# Словарь: какой тайтл – какая разметка с кнопками
 WATCH_MARKUPS = {
     "solo_leveling": WATCH_BUTTON_SOLO,
 }
@@ -473,7 +467,6 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
 
-# 🔥 НОВОЕ: команда, которая делает пост в КАНАЛ с кнопкой "Смотреть"
 async def post_solo_to_channel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
     if ADMINS and user_id not in ADMINS:
@@ -519,7 +512,6 @@ def main() -> None:
     application.add_handler(CommandHandler("profile", handle_profile))
     application.add_handler(CommandHandler("stats", handle_stats))
     application.add_handler(CommandHandler("title", handle_title))
-    # новая команда
     application.add_handler(CommandHandler("post_solo", post_solo_to_channel))
     application.add_handler(CallbackQueryHandler(handle_buttons))
 
