@@ -424,13 +424,36 @@ async def handle_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     users_count = len(data["users"])
     sections = data["stats"]["sections"]
     parts = [
-        f"👥 Пользователей: {users_count}",
+        f"👥 Пользователей в базе: {users_count}",
         f"🎲 Случайный тайтл использован: {data['stats']['random_used']} раз",
         "📊 Переходы по разделам:",
     ]
     for k, v in sections.items():
         parts.append(f"• {k}: {v}")
     text = "\n".join(parts)
+    await update.message.reply_text(text)
+
+
+async def handle_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    user_id = update.effective_user.id
+    if ADMINS and user_id not in ADMINS:
+        await update.message.reply_text("Эта команда доступна только администратору.")
+        return
+
+    users = data.get("users", {})
+    activated_users = [uid for uid, u in users.items() if u.get("activated")]
+    total = len(activated_users)
+
+    if total == 0:
+        await update.message.reply_text("Пока нет ни одного активированного пользователя.")
+        return
+
+    lines = [f"👥 Активированные пользователи: {total}"]
+    for uid in activated_users:
+        lines.append(f"• <a href='tg://user?id={uid}'>Пользователь {uid}</a>")
+
+    text = "\n".join(lines)
     await update.message.reply_text(text)
 
 
@@ -452,7 +475,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "/friend_list – список друзей\n"
             "/friend_vs &lt;ID&gt; – сравнить прогресс с другом\n"
             "/post – запустить мастер создания поста в канал\n"
-            "/stats – статистика использования бота\n\n"
+            "/stats – статистика использования бота\n"
+            "/users – список всех активированных пользователей\n\n"
             "Также можно пользоваться кнопками под сообщением: разделы, профиль, случайный тайтл."
         )
     else:
@@ -904,6 +928,7 @@ def main() -> None:
     application.add_handler(CommandHandler("code", handle_code))
     application.add_handler(CommandHandler("profile", handle_profile))
     application.add_handler(CommandHandler("stats", handle_stats))
+    application.add_handler(CommandHandler("users", handle_users))
     application.add_handler(CommandHandler("title", handle_title))
     application.add_handler(CommandHandler("myid", handle_myid))
     application.add_handler(CommandHandler("friend_invite", handle_friend_invite))
