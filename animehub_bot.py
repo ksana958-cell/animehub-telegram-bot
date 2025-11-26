@@ -16,7 +16,7 @@ from telegram.ext import (
 )
 import json
 import os
-import random
+    import random
 import time
 
 BOT_TOKEN = "8595192008:AAFUokx5z42w-lMmlxVqrzW43tpu0U1mOGA"
@@ -741,6 +741,19 @@ async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYP
         "✅ Приглашение в друзья отправлено.\n"
         "Скажи другу запустить бота и набрать /friend_requests, чтобы принять."
     )
+
+    try:
+        await context.bot.send_message(
+            chat_id=target_id,
+            text=(
+                "🤝 Тебе пришло приглашение в друзья!\n\n"
+                f"От пользователя: <a href='tg://user?id={from_id}'>{from_id}</a>\n\n"
+                "Чтобы посмотреть и принять приглашение, набери команду:\n"
+                "/friend_requests"
+            )
+        )
+    except Exception:
+        pass
 
 
 async def handle_friend_requests(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
