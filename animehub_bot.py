@@ -434,6 +434,47 @@ async def handle_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await update.message.reply_text(text)
 
 
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.effective_user.id
+    if user_id in ADMINS:
+        text = (
+            "🛠 <b>Команды для админа</b>\n\n"
+            "/start – запустить бота\n"
+            "/menu – открыть главное меню навигации\n"
+            "/help – показать это меню помощи\n"
+            "/title &lt;id&gt; – показать карточку тайтла\n"
+            "/code &lt;код&gt; – ввести код доступа\n"
+            "/profile – мой профиль\n"
+            "/myid – показать мой Telegram ID\n"
+            "/friend_invite &lt;ID&gt; – добавить друга\n"
+            "/friend_requests – входящие заявки в друзья\n"
+            "/friend_accept &lt;ID&gt; – принять заявку\n"
+            "/friend_list – список друзей\n"
+            "/friend_vs &lt;ID&gt; – сравнить прогресс с другом\n"
+            "/post – запустить мастер создания поста в канал\n"
+            "/stats – статистика использования бота\n\n"
+            "Также можно пользоваться кнопками под сообщением: разделы, профиль, случайный тайтл."
+        )
+    else:
+        text = (
+            "📖 <b>Команды для пользователя</b>\n\n"
+            "/start – запустить бота и активировать профиль\n"
+            "/menu – открыть главное меню навигации\n"
+            "/help – показать это меню помощи\n"
+            "/title &lt;id&gt; – показать карточку тайтла\n"
+            "/code &lt;код&gt; – ввести код доступа (если он есть)\n"
+            "/profile – мой профиль в боте\n"
+            "/myid – показать мой Telegram ID\n"
+            "/friend_invite &lt;ID&gt; – отправить приглашение в друзья\n"
+            "/friend_requests – входящие заявки в друзья\n"
+            "/friend_accept &lt;ID&gt; – принять заявку\n"
+            "/friend_list – список друзей\n"
+            "/friend_vs &lt;ID&gt; – сравнить прогресс по аниме с другом\n\n"
+            "Основная навигация по аниме доступна через кнопки под сообщениями: тайтлы, популярное, 150 лучших, полнометражки."
+        )
+    await update.effective_message.reply_text(text)
+
+
 async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not context.args:
         await update.message.reply_text(
@@ -859,6 +900,7 @@ def main() -> None:
     application.add_handler(conv_post)
     application.add_handler(CommandHandler("start", handle_start))
     application.add_handler(CommandHandler("menu", handle_menu))
+    application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("code", handle_code))
     application.add_handler(CommandHandler("profile", handle_profile))
     application.add_handler(CommandHandler("stats", handle_stats))
