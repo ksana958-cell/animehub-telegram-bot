@@ -4,7 +4,7 @@ from telegram import (
     InlineKeyboardMarkup,
 )
 from telegram.constants import ParseMode
-from telegram.ext import (
+    from telegram.ext import (
     Application,
     CommandHandler,
     CallbackQueryHandler,
@@ -66,12 +66,6 @@ SECTION_TEXTS = {
         "Текущие самые просматриваемые и обсуждаемые тайтлы на канале.\n"
         "Здесь могут появляться новые релизы и рекомендации на основе активности.\n\n"
         "Следи за обновлениями в AnimeHUB | Dream."
-    ),
-    "hot_past": (
-        "⭐ Раздел «Популярно в другие года»\n\n"
-        "Тайтлы, которые были хайпом раньше, но всё ещё достойны просмотра.\n"
-        "Классика, хиты прошлых сезонов и просто проверенные временем аниме.\n\n"
-        "Ищи соответствующие подборки и плейлисты в канале."
     ),
     "top150": (
         "🏆 Раздел «150 лучших аниме»\n\n"
@@ -161,7 +155,6 @@ def build_main_menu_keyboard() -> InlineKeyboardMarkup:
     keyboard = [
         [InlineKeyboardButton("📚 Аниме по тайтлам", callback_data="sec_titles")],
         [InlineKeyboardButton("🔥 Популярно сейчас", callback_data="sec_hot_now")],
-        [InlineKeyboardButton("⭐ Популярно в другие года", callback_data="sec_hot_past")],
         [InlineKeyboardButton("🏆 150 лучших аниме", callback_data="sec_top150")],
         [InlineKeyboardButton("🎬 Полнометражки", callback_data="sec_movies")],
         [InlineKeyboardButton("🎲 Случайный тайтл", callback_data="rand_title")],
@@ -178,7 +171,7 @@ def build_main_menu_keyboard() -> InlineKeyboardMarkup:
 
 def build_section_keyboard(section: str | None = None) -> InlineKeyboardMarkup:
     row = [InlineKeyboardButton("⬅️ Главное меню", callback_data="main_menu")]
-    if section in ("titles", "hot_now", "hot_past", "top150", "movies"):
+    if section in ("titles", "hot_now", "top150", "movies"):
         row.append(
             InlineKeyboardButton(
                 "🏠 Открыть канал",
@@ -246,7 +239,6 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, dat
         "Я помогаю ориентироваться в аниме-архиве:\n"
         "• 📚 «Аниме по тайтлам»\n"
         "• 🔥 «Популярно сейчас»\n"
-        "• ⭐ «Популярно в другие года»\n"
         "• 🏆 «150 лучших аниме»\n"
         "• 🎬 «Полнометражки»\n\n"
         "Выбери раздел из меню ниже."
