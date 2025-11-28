@@ -2,6 +2,7 @@ from telegram import (
     Update,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    InputMediaPhoto,
 )
 from telegram.constants import ParseMode
 from telegram.ext import (
@@ -475,6 +476,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "/friend_list – список друзей\n"
             "/friend_vs &lt;ID&gt; – сравнить прогресс с другом\n"
             "/post – запустить мастер создания поста в канал\n"
+            "/edit_post &lt;ссылка или ID&gt; – изменить уже опубликованный пост\n"
             "/stats – статистика использования бота\n"
             "/users – список всех активированных пользователей\n\n"
             "Также можно пользоваться кнопками под сообщением: разделы, профиль, случайный тайтл."
@@ -586,6 +588,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 POST_PHOTO, POST_CAPTION, POST_DESC, POST_WATCH = range(4)
+EDIT_PHOTO, EDIT_CAPTION, EDIT_DESC, EDIT_WATCH = range(4, 8)
 
 
 async def post_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -679,10 +682,18 @@ async def post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def post_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data.pop("post_photo", None)
-    context.user_data.pop("post_caption", None)
-    context.user_data.pop("post_desc_link", None)
-    await update.message.reply_text("Создание поста отменено.")
+    # Чистим данные как для создания поста, так и для редактирования
+    for key in [
+        "post_photo",
+        "post_caption",
+        "post_desc_link",
+        "edit_msg_id",
+        "edit_photo",
+        "edit_caption",
+        "edit_desc_link",
+    ]:
+        context.user_data.pop(key, None)
+    await update.message.reply_text("Операция отменена.")
     return ConversationHandler.END
 
 
@@ -742,6 +753,7 @@ async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYP
         "Скажи другу запустить бота и набрать /friend_requests, чтобы принять."
     )
 
+    # Пытаемся отправить уведомление другу (если он уже запускал бота)
     try:
         await context.bot.send_message(
             chat_id=target_id,
@@ -750,7 +762,7 @@ async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYP
                 f"От пользователя: <a href='tg://user?id={from_id}'>{from_id}</a>\n\n"
                 "Чтобы посмотреть и принять приглашение, набери команду:\n"
                 "/friend_requests"
-            )
+            ),
         )
     except Exception:
         pass
@@ -905,6 +917,162 @@ async def handle_friend_vs(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await update.message.reply_text(text)
 
 
+# ====== НОВЫЙ КОНВЕРСЕЙШН ДЛЯ /edit_post ======
+
+
+def parse_message_id(arg: str) -> int | None:
+    s = arg.strip()
+    s = s.rstrip("/")
+    # Если это ссылка: https://t.me/AnimeHUB_Dream/16 или t.me/c/...
+    if "t.me" in s:
+        last_part = s.split("/")[-1]
+        # На случай параметров вида .../16?single
+        if "?" in last_part:
+            last_part = last_part.split("?", 1)[0]
+        try:
+            return int(last_part)
+        except ValueError:
+            return None
+    # Если просто число
+    try:
+        return int(s)
+    except ValueError:
+        return None
+
+
+async def edit_post_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_id = update.effective_user.id
+    if ADMINS and user_id not in ADMINS:
+        await update.message.reply_text("Эта команда только для админа.")
+        return ConversationHandler.END
+
+    if not context.args:
+        await update.message.reply_text(
+            "Использование:\n"
+            "/edit_post <ссылка на сообщение или ID>\n\n"
+            "Пример:\n"
+            "/edit_post https://t.me/AnimeHUB_Dream/16"
+        )
+        return ConversationHandler.END
+
+    msg_id = parse_message_id(context.args[0])
+    if msg_id is None:
+        await update.message.reply_text("Не удалось понять ID сообщения. Проверь ссылку.")
+        return ConversationHandler.END
+
+    context.user_data["edit_msg_id"] = msg_id
+
+    await update.message.reply_text(
+        f"Редактирование поста с ID <code>{msg_id}</code>.\n\n"
+        "Шаг 1/4.\n"
+        "Отправь <b>новую обложку</b> как фото, если хочешь заменить картинку.\n"
+        "Если обложку менять не нужно — напиши <code>-</code>.\n\n"
+        "Если что, /cancel отменит операцию."
+    )
+    return EDIT_PHOTO
+
+
+async def edit_post_get_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message.photo:
+        photo = update.message.photo[-1].file_id
+        context.user_data["edit_photo"] = photo
+    else:
+        text = (update.message.text or "").strip()
+        if text == "-":
+            context.user_data["edit_photo"] = None
+        else:
+            await update.message.reply_text(
+                "Отправь фото или напиши <code>-</code>, если не хочешь менять обложку."
+            )
+            return EDIT_PHOTO
+
+    await update.message.reply_text(
+        "Шаг 2/4.\n"
+        "Отправь <b>новый текст подписи</b> для поста.\n\n"
+        "Можно вставить полностью ту же карточку, что и при создании."
+    )
+    return EDIT_CAPTION
+
+
+async def edit_post_get_caption(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    caption = update.message.text or ""
+    context.user_data["edit_caption"] = caption.strip()
+
+    await update.message.reply_text(
+        "Шаг 3/4.\n"
+        "Отправь ссылку на <b>описание (Telegraph)</b>.\n"
+        "Если описания не нужно или оно остаётся пустым — напиши <code>-</code>."
+    )
+    return EDIT_DESC
+
+
+async def edit_post_get_desc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    desc_link = (update.message.text or "").strip()
+    if desc_link == "-":
+        desc_link = None
+    context.user_data["edit_desc_link"] = desc_link
+
+    await update.message.reply_text(
+        "Шаг 4/4.\n"
+        "Отправь ссылку, где <b>смотреть аниме</b> (кнопка «Смотреть»).\n"
+        "Если кнопка «Смотреть» не нужна — напиши <code>-</code>."
+    )
+    return EDIT_WATCH
+
+
+async def edit_post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    watch_link = (update.message.text or "").strip()
+    if watch_link == "-":
+        watch_link = None
+
+    msg_id = context.user_data.get("edit_msg_id")
+    new_photo = context.user_data.get("edit_photo")
+    new_caption = context.user_data.get("edit_caption", "")
+    desc_link = context.user_data.get("edit_desc_link")
+
+    keyboard = []
+    if watch_link:
+        keyboard.append([InlineKeyboardButton("▶ Смотреть", url=watch_link)])
+    if desc_link:
+        keyboard.append([InlineKeyboardButton("📖 Описание", url=desc_link)])
+    markup = InlineKeyboardMarkup(keyboard) if keyboard else None
+
+    try:
+        if new_photo:
+            media = InputMediaPhoto(media=new_photo, caption=new_caption, parse_mode=ParseMode.HTML)
+            await context.bot.edit_message_media(
+                chat_id=CHANNEL_USERNAME,
+                message_id=msg_id,
+                media=media,
+                reply_markup=markup,
+            )
+        else:
+            await context.bot.edit_message_caption(
+                chat_id=CHANNEL_USERNAME,
+                message_id=msg_id,
+                caption=new_caption,
+                reply_markup=markup,
+                parse_mode=ParseMode.HTML,
+            )
+    except Exception as e:
+        await update.message.reply_text(
+            f"Не удалось отредактировать пост. Возможные причины:\n"
+            f"• Бот не является админом в канале\n"
+            f"• Пост слишком старый или не создан ботом\n\n"
+            f"Техническая ошибка: {e}"
+        )
+        # Чистим и выходим
+        for key in ["edit_msg_id", "edit_photo", "edit_caption", "edit_desc_link"]:
+            context.user_data.pop(key, None)
+        return ConversationHandler.END
+
+    for key in ["edit_msg_id", "edit_photo", "edit_caption", "edit_desc_link"]:
+        context.user_data.pop(key, None)
+
+    await update.message.reply_text("Пост успешно отредактирован ✅")
+    return ConversationHandler.END
+
+
 def main() -> None:
     defaults = Defaults(parse_mode=ParseMode.HTML)
 
@@ -934,7 +1102,31 @@ def main() -> None:
         fallbacks=[CommandHandler("cancel", post_cancel)],
     )
 
+    conv_edit = ConversationHandler(
+        entry_points=[CommandHandler("edit_post", edit_post_start)],
+        states={
+            EDIT_PHOTO: [
+                MessageHandler(
+                    (filters.PHOTO | filters.TEXT) & ~filters.COMMAND,
+                    edit_post_get_photo,
+                )
+            ],
+            EDIT_CAPTION: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, edit_post_get_caption)
+            ],
+            EDIT_DESC: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, edit_post_get_desc)
+            ],
+            EDIT_WATCH: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, edit_post_get_watch)
+            ],
+        },
+        fallbacks=[CommandHandler("cancel", post_cancel)],
+    )
+
     application.add_handler(conv_post)
+    application.add_handler(conv_edit)
+
     application.add_handler(CommandHandler("start", handle_start))
     application.add_handler(CommandHandler("menu", handle_menu))
     application.add_handler(CommandHandler("help", help_command))
