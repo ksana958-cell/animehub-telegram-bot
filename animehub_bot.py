@@ -654,7 +654,7 @@ async def handle_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
     user_id = update.effective_user.id
     if not is_admin(data, user_id):
-        await update.effective_message.reply_text("Эта команда доступна только администратору.")
+        await update.effective_message.reply_text("Эта команда только для администратора.")
         return
 
     users = data.get("users", {})
@@ -668,7 +668,10 @@ async def handle_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     lines = [f"👥 Активированные пользователи: <b>{total}</b>"]
     for uid, u in activated_users:
         name = u.get("full_name") or f"Пользователь {uid}"
-        lines.append(f"• <a href='tg://user?id={uid}'>{name}</a>")
+        lines.append(
+            f"• <a href='tg://user?id={uid}'>{name}</a> — <code>{uid}</code>"
+        )
+
     text = "\n".join(lines)
     await update.effective_message.reply_text(text)
 
