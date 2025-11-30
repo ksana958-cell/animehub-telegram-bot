@@ -918,30 +918,64 @@ async def handle_myid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     )
     await update.effective_message.reply_text(text)
 
-
 async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = load_data()
     if await abort_if_banned(update, data):
         return
+
     from_id = update.effective_user.id
     if check_rate_limit(from_id, "friend_invite", 2.0):
         await update.effective_message.reply_text("Слишком часто отправляешь приглашения, попробуй позже.")
         return
+
     tg_user = update.effective_user
     from_user = get_user(data, from_id)
     update_user_names(data, from_id, tg_user)
 
-    if not context.args:
-        await update.effective_message.reply_text(
-            "Использование:\n/friend_invite <ID друга>\n\n"
-            "ID друг может узнать командой /myid у себя."
-        )
-        return
-    try:
-        target_id = int(context.args[0])
-    except ValueError:
-        await update.effective_message.reply_text("ID должен быть числом.")
-        return
+    target_id = None
+    if update.message and update.message.reply_to_message:
+        reply_user = update.message.reply_to_message.from_user
+        if reply_user and not reply_user.is_bot:
+            target_id = reply_user.id
+
+    if target_id is None:
+        if not context.args:
+            await update.effective_message.reply_text(
+                "Использование:\n"
+                "• Ответь на сообщение друга и набери: /friend_invite\n"
+                "• Или: /friend_invite @username\n"
+                "• Или: /friend_invite ссылка_на_профиль (например, https://t.me/username)\n"
+                "• Или: /friend_invite <ID друга>\n\n"
+                "ID друг может узнать командой /myid у себя."
+            )
+            return
+
+        raw = context.args[0].strip()
+        token = raw
+        if "t.me/" in raw:
+            part = raw.split("t.me/", 1)[1]
+            for sep in ("?", "/"):
+                if sep in part:
+                    part = part.split(sep, 1)[0]
+            token = part
+
+        if token.startswith("@"):
+            token = token[1:]
+
+        if token.isdigit():
+            target_id = int(token)
+        else:
+            try:
+                chat = await context.bot.get_chat(f"@{token}")
+                target_id = chat.id
+            except Exception:
+                await update.effective_message.reply_text(
+                    "Не удалось найти пользователя по этому username/ссылке.\n"
+                    "Убедись, что:\n"
+                    "• друг уже написал что-то боту\n"
+                    "• указан корректный @username или ссылка вида https://t.me/username"
+                )
+                return
 
     if target_id == from_id:
         await update.effective_message.reply_text("Нельзя добавить в друзья самого себя.")
@@ -984,7 +1018,6 @@ async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYP
         )
     except Exception:
         pass
-
 
 async def handle_friend_requests(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = load_data()
