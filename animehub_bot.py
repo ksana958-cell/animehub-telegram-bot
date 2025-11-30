@@ -16,10 +16,9 @@ from telegram.ext import (
     filters,
 )
 import json
-import os
+    os
 import random
 import time
-from datetime import time as dtime
 
 CONFIG = {
     "BOT_TOKEN": "8595192008:AAFUokx5z42w-lMmlxVqrzW43tpu0U1mOGA",
@@ -173,6 +172,14 @@ def load_data():
         data["admins"] = ADMINS[:]
     if "invites" not in data:
         data["invites"] = {}
+
+    # гарантируем, что у каждого поста есть поле caption
+    posts = data.get("posts", {})
+    for mid, info in posts.items():
+        if "caption" not in info:
+            info["caption"] = None
+    data["posts"] = posts
+
     return data
 
 
@@ -727,7 +734,7 @@ async def handle_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
     user_id = update.effective_user.id
     if not is_admin(data, user_id):
-        await update.effective_message.reply_text("Эта команда доступна только для администратора.")
+        await update.effective_message.reply_text("Эта команда только для администратора.")
         return
 
     users = data.get("users", {})
@@ -948,7 +955,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "• <code>/profile</code> – мой профиль\n"
             "• <code>/myid</code> – мой Telegram ID\n"
             "• <code>/title id</code> – карточка тайтла\n"
-            "• <code>/search текст</code> – поиск тайтла по названию\n"
+            "• <code>/search текст</code> – поиск по постам и тайтлам\n"
             "• <code>/code код</code> – ввести код доступа\n"
             "• <code>/weekly</code> – недельный прогресс по 150\n\n"
             "⭐ <b>Избранное и 150 лучших</b>\n"
@@ -992,7 +999,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "• <code>/profile</code> – мой профиль\n"
             "• <code>/myid</code> – мой Telegram ID\n"
             "• <code>/title id</code> – карточка тайтла\n"
-            "• <code>/search текст</code> – поиск тайтла по названию\n"
+            "• <code>/search текст</code> – поиск по постам и тайтлам\n"
             "• <code>/code код</code> – ввести код доступа (если есть)\n"
             "• <code>/weekly</code> – мой недельный прогресс по 150\n\n"
             "⭐ <b>Избранное и «150 лучших»</b>\n"
@@ -1060,11 +1067,34 @@ async def handle_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     if not context.args:
         await update.effective_message.reply_text(
-            "Использование:\n<code>/search поднятие уровня</code>"
+            "Использование:\n<code>/search гуррен-лаганн</code>"
         )
         return
 
     query = " ".join(context.args).strip().lower()
+    base_link = f"https://t.me/{CHANNEL_USERNAME.lstrip('@')}"
+
+    # 1) ищем по постам (caption)
+    posts = data.get("posts", {})
+    post_matches = []
+    for mid, info in posts.items():
+        cap = (info.get("caption") or "")
+        if query in cap.lower():
+            post_matches.append((int(mid), cap))
+
+    if post_matches:
+        post_matches.sort(key=lambda x: x[0])
+        lines = ["🔎 <b>Найденные посты в канале:</b>"]
+        for mid, cap in post_matches[:15]:
+            first_line = cap.strip().splitlines()[0] if cap.strip() else f"Пост #{mid}"
+            if len(first_line) > 50:
+                first_line = first_line[:47] + "..."
+            url = f"{base_link}/{mid}"
+            lines.append(f"• <a href='{url}'>{first_line}</a>")
+        await update.effective_message.reply_text("\n".join(lines))
+        return
+
+    # 2) если по постам ничего – ищем по TITLES, как раньше
     results = []
     for t in TITLES:
         name = t.get("name", "").lower()
@@ -1702,6 +1732,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             posts[str(m.message_id)] = {
                 "title_id": draft.get("title_id"),
                 "created_at": int(time.time()),
+                "caption": draft.get("caption", ""),
             }
             data["posts"] = posts
             save_data(data)
@@ -1855,6 +1886,7 @@ async def post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             posts[str(m.message_id)] = {
                 "title_id": None,
                 "created_at": int(time.time()),
+                "caption": caption,
             }
             data["posts"] = posts
             save_data(data)
@@ -2066,6 +2098,15 @@ async def edit_post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE
                 context.user_data.pop(key, None)
             return ConversationHandler.END
 
+        # обновляем caption в базе постов
+        posts = data.get("posts", {})
+        info = posts.get(str(msg_id), {})
+        info.setdefault("title_id", None)
+        info.setdefault("created_at", int(time.time()))
+        info["caption"] = new_caption
+        posts[str(msg_id)] = info
+        data["posts"] = posts
+
         data["stats"]["posts_edited"] += 1
         save_data(data)
 
@@ -2106,10 +2147,11 @@ async def handle_link_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     posts = data.get("posts", {})
-    posts[str(msg_id)] = {
-        "title_id": tid,
-        "created_at": int(time.time()),
-    }
+    info = posts.get(str(msg_id), {})
+    info["title_id"] = tid
+    info.setdefault("created_at", int(time.time()))
+    info.setdefault("caption", None)
+    posts[str(msg_id)] = info
     data["posts"] = posts
     save_data(data)
 
@@ -2170,6 +2212,7 @@ async def handle_repost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         posts[str(m.message_id)] = {
             "title_id": old_info.get("title_id"),
             "created_at": int(time.time()),
+            "caption": old_info.get("caption"),
         }
         data["stats"]["reposts"] += 1
         data["stats"]["posts_created"] += 1
