@@ -413,7 +413,7 @@ TOP150_MERGED_LIST = [
     "Spy x Family — Семья шпиона",
 ]
 
-TOP150_PAGE_SIZE = 10
+TOP150_PAGE_SIZE = 25
 
 
 def build_top150_page_text(kind: str, page: int) -> tuple[str, int, int]:
