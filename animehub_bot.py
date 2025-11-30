@@ -129,6 +129,7 @@ def default_data():
         "friend_requests": {},
         "posts": {},
         "banned": {},
+        "admins": ADMINS[:],
     }
 
 
@@ -165,6 +166,8 @@ def load_data():
         data["banned"] = {}
     if "version" not in data:
         data["version"] = 1
+    if "admins" not in data:
+        data["admins"] = ADMINS[:]
     return data
 
 
@@ -232,6 +235,16 @@ def inc_section_stat(data, section):
 def has_access(user_data, required_level: str) -> bool:
     user_level = user_data.get("access", "free")
     return ACCESS_LEVELS.get(user_level, 0) >= ACCESS_LEVELS.get(required_level, 0)
+
+
+def is_admin(data, user_id: int) -> bool:
+    admins_from_data = set(data.get("admins", []))
+    base_admins = set(ADMINS)
+    return user_id in admins_from_data or user_id in base_admins
+
+
+def is_root_admin(user_id: int) -> bool:
+    return user_id in ADMINS
 
 
 async def is_subscribed(context: ContextTypes.DEFAULT_TYPE, user_id: int) -> bool:
@@ -384,7 +397,7 @@ async def send_section(
     update_user_names(data, user_id, tg_user)
 
     required_access = SECTION_ACCESS.get(section_key)
-    if required_access and not has_access(user_data, required_access):
+    if required_access and not has_access(user_data, required_level=required_access):
         text = (
             "🔑 Доступ к этому разделу ограничен.\n\n"
             f"Нужен уровень: <b>{required_access}</b>\n"
@@ -615,7 +628,7 @@ async def handle_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
-    if ADMINS and user_id not in ADMINS:
+    if not is_admin(data, user_id):
         await update.effective_message.reply_text("Эта команда доступна только администратору.")
         return
     users_count = len(data["users"])
@@ -640,7 +653,7 @@ async def handle_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
-    if ADMINS and user_id not in ADMINS:
+    if not is_admin(data, user_id):
         await update.effective_message.reply_text("Эта команда доступна только администратору.")
         return
 
@@ -794,7 +807,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
-    if user_id in ADMINS:
+    if is_admin(data, user_id):
         text = (
             "🛠 <b>Команды для админа</b>\n\n"
             "/start – запустить бота\n"
@@ -821,7 +834,10 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "/stats – статистика использования бота\n"
             "/users – список всех активированных пользователей\n"
             "/ban_user &lt;ID&gt; – заблокировать пользователя в боте\n"
-            "/unban_user &lt;ID&gt; – разблокировать пользователя\n\n"
+            "/unban_user &lt;ID&gt; – разблокировать пользователя\n"
+            "/admin_list – список админов\n"
+            "/add_admin &lt;ID&gt; – добавить админа (только корневой)\n"
+            "/remove_admin &lt;ID&gt; – убрать админа (кроме корневых)\n\n"
             "Основная навигация по аниме — через кнопки под сообщениями."
         )
     else:
@@ -1147,7 +1163,7 @@ async def handle_friends_callback(update: Update, context: ContextTypes.DEFAULT_
 async def handle_ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = load_data()
     user_id = update.effective_user.id
-    if ADMINS and user_id not in ADMINS:
+    if not is_admin(data, user_id):
         await update.effective_message.reply_text("Эта команда только для админа.")
         return
     if not context.args:
@@ -1169,7 +1185,7 @@ async def handle_ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def handle_unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = load_data()
     user_id = update.effective_user.id
-    if ADMINS and user_id not in ADMINS:
+    if not is_admin(data, user_id):
         await update.effective_message.reply_text("Эта команда только для админа.")
         return
     if not context.args:
@@ -1189,6 +1205,87 @@ async def handle_unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await update.effective_message.reply_text(f"Пользователь {target_id} разблокирован.")
     else:
         await update.effective_message.reply_text("Этот пользователь не был заблокирован.")
+
+
+async def handle_admin_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    if await abort_if_banned(update, data):
+        return
+    user_id = update.effective_user.id
+    if not is_admin(data, user_id):
+        await update.effective_message.reply_text("Эта команда только для админов.")
+        return
+
+    admins_file = set(data.get("admins", []))
+    base_admins = set(ADMINS)
+    all_admins = sorted(admins_file | base_admins)
+
+    lines = ["🔐 Список админов:"]
+    for aid in all_admins:
+        mark = " (root)" if aid in base_admins else ""
+        lines.append(f"• <a href='tg://user?id={aid}'>{aid}</a>{mark}")
+    text = "\n".join(lines)
+    await update.effective_message.reply_text(text)
+
+
+async def handle_add_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    if await abort_if_banned(update, data):
+        return
+    user_id = update.effective_user.id
+    if not is_root_admin(user_id):
+        await update.effective_message.reply_text("Добавлять админов может только корневой админ.")
+        return
+    if not context.args:
+        await update.effective_message.reply_text("Использование:\n/add_admin <ID>")
+        return
+    try:
+        target_id = int(context.args[0])
+    except ValueError:
+        await update.effective_message.reply_text("ID должен быть числом.")
+        return
+
+    admins_list = data.get("admins", [])
+    if target_id in admins_list or target_id in ADMINS:
+        await update.effective_message.reply_text("Этот пользователь уже админ.")
+        return
+
+    admins_list.append(target_id)
+    data["admins"] = admins_list
+    save_data(data)
+    await update.effective_message.reply_text(f"Пользователь {target_id} добавлен в админы.")
+
+
+async def handle_remove_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    if await abort_if_banned(update, data):
+        return
+    user_id = update.effective_user.id
+    if not is_root_admin(user_id):
+        await update.effective_message.reply_text("Удалять админов может только корневой админ.")
+        return
+    if not context.args:
+        await update.effective_message.reply_text("Использование:\n/remove_admin <ID>")
+        return
+    try:
+        target_id = int(context.args[0])
+    except ValueError:
+        await update.effective_message.reply_text("ID должен быть числом.")
+        return
+
+    if target_id in ADMINS:
+        await update.effective_message.reply_text("Нельзя удалить корневого админа из CONFIG.")
+        return
+
+    admins_list = data.get("admins", [])
+    if target_id not in admins_list:
+        await update.effective_message.reply_text("Этот пользователь не является админом (или только root через CONFIG).")
+        return
+
+    admins_list = [a for a in admins_list if a != target_id]
+    data["admins"] = admins_list
+    save_data(data)
+    await update.effective_message.reply_text(f"Пользователь {target_id} убран из админов.")
 
 
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1319,7 +1416,7 @@ async def post_start_common(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     if await abort_if_banned(update, data):
         return ConversationHandler.END
     user_id = update.effective_user.id
-    if ADMINS and user_id not in ADMINS:
+    if not is_admin(data, user_id):
         await update.effective_message.reply_text("Эта команда только для админа.")
         return ConversationHandler.END
 
@@ -1510,7 +1607,7 @@ async def edit_post_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if await abort_if_banned(update, data):
         return ConversationHandler.END
     user_id = update.effective_user.id
-    if ADMINS and user_id not in ADMINS:
+    if not is_admin(data, user_id):
         await update.effective_message.reply_text("Эта команда только для админа.")
         return ConversationHandler.END
 
@@ -1664,7 +1761,7 @@ async def handle_link_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
-    if ADMINS and user_id not in ADMINS:
+    if not is_admin(data, user_id):
         await update.effective_message.reply_text("Эта команда только для админа.")
         return
 
@@ -1704,7 +1801,7 @@ async def handle_repost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
-    if ADMINS and user_id not in ADMINS:
+    if not is_admin(data, user_id):
         await update.effective_message.reply_text("Эта команда только для админа.")
         return
 
@@ -1843,6 +1940,9 @@ def main() -> None:
     application.add_handler(CommandHandler("repost", handle_repost))
     application.add_handler(CommandHandler("ban_user", handle_ban_user))
     application.add_handler(CommandHandler("unban_user", handle_unban_user))
+    application.add_handler(CommandHandler("admin_list", handle_admin_list))
+    application.add_handler(CommandHandler("add_admin", handle_add_admin))
+    application.add_handler(CommandHandler("remove_admin", handle_remove_admin))
     application.add_handler(CallbackQueryHandler(handle_buttons))
 
     application.run_polling()
