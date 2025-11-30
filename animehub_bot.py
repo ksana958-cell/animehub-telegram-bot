@@ -77,163 +77,10 @@ TITLES = [
         ),
         "top150": True,
         "min_access": "free",
+        "hot": True,
+        "added_at": int(time.time()),
     },
 ]
-
-TOP150_RATINGS = [
-    "1. Fullmetal Alchemist: Brotherhood — Стальной алхимик: Братство",
-    "2. Steins;Gate — Врата Штейна",
-    "3. Frieren: Beyond Journey's End — Провожающая в последний путь Фрирен",
-    "4. Attack on Titan — Атака титанов",
-    "5. Hunter x Hunter — Охотник × Охотник",
-    "6. Code Geass — Код Гиас",
-    "7. Gintama — Гинтама",
-    "8. One Piece — Ван-Пис",
-    "9. Tengen Toppa Gurren Lagann — Гуррен-Лаганн",
-    "10. Vinland Saga — Сага о Винланде",
-    "11. Bleach — Блич",
-    "12. Death Note — Тетрадь смерти",
-    "13. Monster — Монстр",
-    "14. Neon Genesis Evangelion — Евангелион нового поколения",
-    "15. Clannad — Кланнад",
-    "16. Kenpuu Denki Berserk - Берсерк (1997)",
-    "17. Re:Zero − Starting Life in Another World — Re:Zero. Жизнь с нуля в альтернативном мире",
-    "18. Monogatari Series — Цикл историй (Monogatari)",
-    "19. Noragami — Бездомный бог",
-    "20. Sen to Chihiro no Kamikakushi — Унесённые призраками",
-    "21. Made in Abyss — Созданный в Бездне",
-    "22. Death Note - Тетрадь смерти",
-    "23. The Tatami Galaxy — Сказ о четырёх с половиной татами",
-    "24. Naruto — Наруто",
-    "25. Banana Fish — Банановая рыба",
-    "26. Violet Evergarden — Вайолет Эвергарден",
-    "27. Barakamon — Баракамон",
-    "28. Odd Taxi — Случайное такси",
-    "29. Monster — Монстр",
-    "30. Bocchi the Rock! — Одинокий рокер!",
-    "31. A Place Further Than the Universe — Дальше, чем космос",
-    "32. A Silent Voice (Koe no Katachi) — Форма голоса",
-    "33. Your Name (Kimi no Na wa) — Твоё имя",
-    "34. Wolf Children — Волчьи дети Амэ и Юки",
-    "35. Kaguya-sama: Love Is War — Госпожа Кагуя: в любви как на войне",
-    "36. Princess Mononoke — Принцесса Мононоке",
-    "37. Howl no Ugoku Shiro — Ходячий замок",
-    "38. My Neighbor Totoro — Мой сосед Тоторо",
-    "39. Grave of the Fireflies — Могила светлячков",
-    "40. The Girl Who Leapt Through Time — Девочка, покорившая время",
-    "41. Mushoku Tensei: Isekai Ittara Honki Dasu - Реинкарнация безработного: История о приключениях в другом мире",
-    "42. Demon Slayer: Kimetsu no Yaiba — Клинок, рассекающий демонов",
-    "43. Jujutsu Kaisen — Магическая битва",
-    "44. Chainsaw Man — Человек-бензопила",
-    "45. My Hero Academia — Моя геройская академия",
-    "46. Dr. Stone — Доктор Стоун",
-    "47. Haikyu!! — Волейбол!!",
-    "48. Kuroko’s Basketball — Баскетбол Куроко",
-    "49. Slam Dunk — Слэм-данк",
-    "50. Hajime no Ippo — Первый шаг",
-    "51. One-Punch Man — Ванпанчмен",
-    "52. Konosuba: God’s Blessing on This Wonderful World! — Богиня благословляет этот прекрасный мир!",
-    "53. No Game No Life — Нет игры — нет жизни",
-    "54. Hellsing Ultimate — Хеллсинг OVA",
-    "55. Black Lagoon — Пираты «Чёрной Лагуны»",
-    "56. Samurai Champloo — Самурай Чамплу",
-    "57. Cowboy Bebop — Ковбой Бибоп",
-    "58. Great Teacher Onizuka — Крутой учитель Онидзука",
-    "59. Toradora! — ТораДора!",
-    "60. Spice and Wolf — Волчица и пряности",
-    "61. Horimiya — Хоримия",
-    "62. Fruits Basket (2019) — Фруктовая корзина (2019)",
-    "63. Your Lie in April — Твоя апрельская ложь",
-    "64. Angel Beats! — Ангельские ритмы",
-    "65. Nana — Нана",
-    "66. Anohana: The Flower We Saw That Day — Невиданный цветок",
-    "67. Welcome to the N.H.K. — Добро пожаловать в NHK",
-    "68. Hyouka — Хёка",
-    "69. Oregairu (My Teen Romantic Comedy SNAFU) — Как и ожидалось, моя школьная романтическая жизнь не удалась",
-    "70. Laid-Back Camp (Yuru Camp) — Лагерь на свежем воздухе",
-    "71. Oshi no Ko — Ребёнок идола",
-    "72. Cyberpunk: Edgerunners — Киберпанк: Бегущие по краю",
-    "73. 86 Eighty-Six — Восемьдесят шесть",
-    "74. Parasyte: The Maxim — Паразит: Учение о жизни",
-    "75. The Promised Neverland (season 1) — Обещанный Неверленд",
-    "76. Erased (Boku dake ga Inai Machi) — Город, в котором меня нет",
-    "77. Terror in Resonance — Эхо террора",
-    "78. Durarara!! — Дюрарара!!",
-    "79. Darker than Black — Темнее чёрного",
-    "80. Elfen Lied — Эльфийская песнь",
-    "81. Future Diary — Дневник будущего",
-    "82. Another — Иная",
-    "83. Guilty Crown — Корона вины",
-    "84. Pandora Hearts — Сердца Пандоры",
-    "85. Ashita no Joe - Завтрашний Джо",
-    "86. Sword Art Online — Мастера меча онлайн",
-    "87. Fairy Tail — Хвост феи",
-    "88. Psycho-Pass — Психопаспорт",
-    "89. Dungeon Meshi - Подземелье вкусностей",
-    "90. Blue Exorcist — Синий экзорцист",
-    "91. Fate/Zero — Fate/Zero",
-    "92. Fate/stay night: Unlimited Blade Works — Судьба: Ночь схватки — Клинков бесконечный край",
-    "93. Puella Magi Madoka Magica — Девочка-волшебница Мадока Магика",
-    "94. Natsume’s Book of Friends — Тетрадь дружбы Нацумэ",
-    "95. ReLIFE — ReLIFE",
-    "96. Beck - Бек",
-    "97. Bakuman — Бакуман",
-    "98. Golden Boy — Золотой парень",
-    "99. School Rumble — Школьные войны",
-    "100. Daily Lives of High School Boys — Повседневная жизнь старшеклассников",
-    "101. Nichijou — Nichijou — Повседневная жизнь",
-    "102. Saiki Kusuo no Ψ-nan — Разрушительная жизнь Саики Кусо",
-    "103. K-ON! — Кэйон!",
-    "104. Free! — Вольный стиль!",
-    "105. Dragon Ball - Драконий жемчуг",
-    "106. Planetes — Странники",
-    "107. Space Brothers — Космические братья",
-    "108. Mob Psycho 100 — Моб Психо 100",
-    "109. Kill la Kill — Kill la Kill — Килл ла Килл",
-    "110. FLCL (Fooly Cooly) — Фури-Кури",
-    "111. Serial Experiments Lain — Эксперименты Лэйн",
-    "112. Perfect Blue — Идеальная грусть",
-    "113. Bakuman. — Бакуман",
-    "114. Akira — Акира",
-    "115. Ergo Proxy — Эрго Прокси",
-    "116. Texhnolyze — Технолайз",
-    "117. Black Butler — Темный дворецкий",
-    "118. D.Gray-man — Ди.Грей-мен",
-    "119. Magi: The Labyrinth of Magic — Маги: Лабиринт волшебства",
-    "120. Enen no Shouboutai - Пламенная бригада пожарных",
-    "121. Baccano! — Шумиха!",
-    "122. Sword Art Online — Мастера Меча Онлайн",
-    "123. Dororo — Дороро",
-    "124. Drifters — Скитальцы",
-    "125. Goblin Slayer — Убийца гоблинов",
-    "126. Tokyo Ghoul — Токийский гуль",
-    "127. Tokyo Revengers — Токийские мстители",
-    "128. Devilman: Crybaby — Девилмэн: Плакса",
-    "129. Hellsing (TV) — Хеллсинг",
-    "130. Shaman King — Шаман Кинг",
-    "131. Soul Eater — Пожиратель душ",
-    "132. Inuyasha — Инуяша",
-    "133. Kingdom — Царство",
-    "134. Kenshin (TV) — Бродяга Кэнсин",
-    "135. Trigun — Триган",
-    "136. JoJo’s Bizarre Adventure — Невероятные приключения ДжоДжо",
-    "137. Barakamon - Баракамон",
-    "138. Nanatsu no Taizai — Семь смертных грехов",
-    "139. Land of the Lustrous — Страна самоцветов",
-    "140. Higurashi: When They Cry — Когда плачут цикады",
-    "141. Boku dake ga Inai Machi — Город, в котором меня нет",
-    "142. Black Clover — Чёрный клевер",
-    "143. Grappler Baki (TV) — Боец Баки",
-    "144. Josee, the Tiger and the Fish — Дзёсэ, тигр и рыба",
-    "145. Tenki no Ko — Дитя погоды",
-    "146. Children Who Chase Lost Voices — Дети, ищущие потерянные голоса",
-    "147. The Wind Rises — Ветер крепчает",
-    "148. 5 Centimeters per Second — 5 сантиметров в секунду",
-    "149. Angel’s Egg — Яйцо ангела",
-    "150. Spy x Family — Семья шпиона",
-]
-
-TOP150_RATINGS_PAGE_SIZE = 25
 
 SECTION_TEXTS = {
     "titles": (
@@ -244,15 +91,14 @@ SECTION_TEXTS = {
     ),
     "hot_now": (
         "🔥 Раздел «Популярно сейчас»\n\n"
-        "Текущие самые просматриваемые и обсуждаемые тайтлы на канале.\n"
-        "Здесь могут появляться новые релизы и рекомендации на основе активности.\n\n"
-        "Следи за обновлениями в AnimeHUB | Dream."
+        "Здесь появляются тайтлы, которые сейчас в фокусе: новинки, топовые релизы,\n"
+        "то, что чаще всего открывают и добавляют в избранное на AnimeHUB | Dream.\n"
     ),
     "top150": (
         "🏆 Раздел «150 лучших аниме»\n\n"
-        "1) Постерный топ 150 лучших аниме — будет собран по твоему постеру.\n"
-        "2) Топ 150 по рейтингам — на основе оценок с MyAnimeList, Shikimori, Кинопоиска и IMDb.\n\n"
-        "Сейчас можно посмотреть топ по рейтингам командой /top150_ratings."
+        "Раздел основан на постере «150 лучших аниме».\n"
+        "Постепенно все тайтлы с постера будут появляться в канале в высоком качестве.\n\n"
+        "Используй канал как онлайн-версию постера и отмечай для себя уже просмотренное."
     ),
     "movies": (
         "🎬 Раздел «Полнометражки»\n\n"
@@ -261,6 +107,367 @@ SECTION_TEXTS = {
         "Полнометражки будут вынесены в отдельные плейлисты в канале."
     ),
 }
+
+TOP150_POSTER_LIST = [
+    "Стальной Алхимик",
+    "Провожающая в последний путь Фрирен",
+    "Легенда о героях Галактики (1988)",
+    "Код Гиас",
+    "Гинтама",
+    "Крутой учитель Онидзука",
+    "Ковбой Бибоп",
+    "Унесённые призраками",
+    "Хантер Х Хантер",
+    "Твоё Имя",
+    "Гуррен-Лаганн",
+    "Врата Штейна",
+    "Атака Титанов",
+    "Тетрадь Смерти",
+    "Город, в котором меня нет",
+    "Ван-Пис",
+    "Клинок, рассекающий демонов",
+    "Для тебя Бессмертный",
+    "Твоя апрельская ложь",
+    "Мастер Муши",
+    "Случайное Такси",
+    "Волейбол!!",
+    "Хоримия",
+    "Монолог Фармацевта",
+    "Сёва-Гэнроку: Двойное самоубийство по ракуго",
+    "Реинкарнация безработного",
+    "Форма голоса",
+    "Берсерк (1997 года)",
+    "Наруто",
+    "Агент Времени",
+    "Ходячий замок Хаула",
+    "Моб Психо 100",
+    "ДанДаДан",
+    "Принцесса Мононоке",
+    "Невероятные приключения ДжоДжо",
+    "Плутон",
+    "Обещанный Неверленд",
+    "Моноготари / Цикл история",
+    "Вайолет Эвергарден",
+    "Первый шаг",
+    "Тетрадь дружбы Нацумэ",
+    "Самурай Чемплу",
+    "Сага о Винланде",
+    "Магистр дьявольского культа",
+    "Пинг-понг",
+    "Брошенный кролик",
+    "Созданный в Бездне",
+    "Волчьи дети Амэ и Юки",
+    "Бакуман",
+    "Человек бензопила",
+    "Монстр",
+    "Блич",
+    "Могила светлячков",
+    "В лес, где мерцают светлячки",
+    "Магическая битва",
+    "Ребёнок идола",
+    "Нодамэ Кантабиле",
+    "Мой сосед Тоторо",
+    "Хикару и го",
+    "Одинокий рокер",
+    "Радуга: Семеро из шестой камеры второго блока",
+    "Бек",
+    "Виви: Песнь флюоритового глаза",
+    "Я хочу съесть твою поджелудочную",
+    "Паразит: Учение о жизни",
+    "Шёпот сердца",
+    "Навсикая из Долины ветров",
+    "Доктор Стоун",
+    "Слэм-Данк",
+    "Мононокэ",
+    "Подземелье вкусностей",
+    "Завтрашний Джо",
+    "Волчица и пряности",
+    "Бродяга Кэнсин",
+    "Небесный замок Лапута",
+    "Лагерь на свежем воздухе",
+    "Семья шпиона",
+    "Нана",
+    "Почувствуй ветер",
+    "Хеллсинг OVA",
+    "Баракамон",
+    "Призрак в доспех (2005) & Призрак в доспехах: Синдром одиночки",
+    "Баскетбол Куроко",
+    "Судьба: Начало & Судьба/Ночь схватки бесконечный мир клинков",
+    "Дети на холме",
+    "Ученик чудовища",
+    "Один на вылет",
+    "Путешествие кино (2003)",
+    "Укрась прощальное утро цветами обещания",
+    "Странники",
+    "Сказ о четырёх с половиной татами",
+    "Евангелион, нового поколения",
+    "Триган",
+    "РеЗеро. Жизнь с нуля в альтернативном мире",
+    "Токийские мстители",
+    "Ведьмина служба доставки",
+    "Дальше, чем космос",
+    "Летнее время",
+    "Руки прочь от кинокружка!",
+    "Дитя погоды",
+    "Ванпанчмен",
+    "Очень приятно, бог!",
+    "Добро пожаловать в NHK",
+    "Госпожа Кагуя: в любви как на войне",
+    "Кайдзю номер восемь",
+    "Этот свин не понимает мечту девочки-зайки",
+    "Дороро",
+    "Драгонбол (1986-1996)",
+    "Кайдзи",
+    "Парад смерти",
+    "Поднятие уровня в одиночку",
+    "Невиданный цветок",
+    "Банановая рыба",
+    "Ангельские ритмы",
+    "Ветер крепчает",
+    "Пираты \"Чёрной Лагуны\"",
+    "Рейтинг Короля",
+    "Бездомный бог",
+    "Моя геройская академия",
+    "Шумиха",
+    "Как и ожидалось, моя школьная романтическая жизнь не удалась",
+    "Страна самоцветов",
+    "Эхо террора",
+    "Девочка, покорившая время",
+    "Дорохедоро",
+    "Темнее чёрного",
+    "Шаман Кинг",
+    "Красная черта",
+    "Однажды в Токио",
+    "Богиня благословляет этот прекрасный мир!",
+    "Повар-боец Сома",
+    "Актриса тысячелетия",
+    "Сад изящных слоёв",
+    "Эрго Прокси",
+    "Меч чужака",
+    "Идеальная грусть",
+    "Хвост Фей",
+    "Красавица-воин Сейлор Мун (1992)",
+    "Судзумэ, закрывающая двери",
+    "Килл Ла Килл",
+    "Дюрарара",
+    "Акира",
+    "Волчий Дождь",
+    "Психопаспорт",
+    "Меланхолия Харуки Судзумии",
+    "Мастера Меча Онлайн",
+    "Токийский Гуль",
+    "Эксперименты Лэйн",
+    "Фури-Кури (2000)",
+]
+
+TOP150_MERGED_LIST = [
+    "Fullmetal Alchemist: Brotherhood — Стальной алхимик: Братство",
+    "Steins;Gate — Врата Штейна",
+    "Frieren: Beyond Journey's End — Провожающая в последний путь Фрирен",
+    "Attack on Titan — Атака титанов",
+    "Hunter x Hunter — Охотник × Охотник",
+    "Code Geass — Код Гиас",
+    "Gintama — Гинтама",
+    "One Piece — Ван-Пис",
+    "Tengen Toppa Gurren Lagann — Гуррен-Лаганн",
+    "Vinland Saga — Сага о Винланде",
+    "Bleach — Блич",
+    "Death Note — Тетрадь смерти",
+    "Monster — Монстр",
+    "Neon Genesis Evangelion — Евангелион нового поколения",
+    "Clannad — Кланнад",
+    "Kenpuu Denki Berserk — Берсерк (1997)",
+    "Re:Zero − Starting Life in Another World — Re:Zero. Жизнь с нуля в альтернативном мире",
+    "Monogatari Series — Цикл историй (Monogatari)",
+    "Noragami — Бездомный бог",
+    "Sen to Chihiro no Kamikakushi — Унесённые призраками",
+    "Made in Abyss — Созданный в Бездне",
+    "Death Note — Тетрадь смерти",
+    "The Tatami Galaxy — Сказ о четырёх с половиной татами",
+    "Naruto — Наруто",
+    "Banana Fish — Банановая рыба",
+    "Violet Evergarden — Вайолет Эвергарден",
+    "Barakamon — Баракамон",
+    "Odd Taxi — Случайное такси",
+    "Monster — Монстр",
+    "Bocchi the Rock! — Одинокий рокер!",
+    "A Place Further Than the Universe — Дальше, чем космос",
+    "A Silent Voice (Koe no Katachi) — Форма голоса",
+    "Your Name (Kimi no Na wa) — Твоё имя",
+    "Wolf Children — Волчьи дети Амэ и Юки",
+    "Kaguya-sama: Love Is War — Госпожа Кагуя: в любви как на войне",
+    "Princess Mononoke — Принцесса Мононоке",
+    "Howl no Ugoku Shiro — Ходячий замок",
+    "My Neighbor Totoro — Мой сосед Тоторо",
+    "Grave of the Fireflies — Могила светлячков",
+    "The Girl Who Leapt Through Time — Девочка, покорившая время",
+    "Mushoku Tensei: Isekai Ittara Honki Dasu — Реинкарнация безработного",
+    "Demon Slayer: Kimetsu no Yaiba — Клинок, рассекающий демонов",
+    "Jujutsu Kaisen — Магическая битва",
+    "Chainsaw Man — Человек-бензопила",
+    "My Hero Academia — Моя геройская академия",
+    "Dr. Stone — Доктор Стоун",
+    "Haikyu!! — Волейбол!!",
+    "Kuroko’s Basketball — Баскетбол Куроко",
+    "Slam Dunk — Слэм-данк",
+    "Hajime no Ippo — Первый шаг",
+    "One-Punch Man — Ванпанчмен",
+    "Konosuba: God’s Blessing on This Wonderful World! — Богиня благословляет этот прекрасный мир!",
+    "No Game No Life — Нет игры — нет жизни",
+    "Hellsing Ultimate — Хеллсинг OVA",
+    "Black Lagoon — Пираты «Чёрной Лагуны»",
+    "Samurai Champloo — Самурай Чамплу",
+    "Cowboy Bebop — Ковбой Бибоп",
+    "Great Teacher Onizuka — Крутой учитель Онидзука",
+    "Toradora! — ТораДора!",
+    "Spice and Wolf — Волчица и пряности",
+    "Horimiya — Хоримия",
+    "Fruits Basket (2019) — Фруктовая корзина (2019)",
+    "Your Lie in April — Твоя апрельская ложь",
+    "Angel Beats! — Ангельские ритмы",
+    "Nana — Нана",
+    "Anohana: The Flower We Saw That Day — Невиданный цветок",
+    "Welcome to the N.H.K. — Добро пожаловать в NHK",
+    "Hyouka — Хёка",
+    "Oregairu (My Teen Romantic Comedy SNAFU) — Как и ожидалось, моя школьная романтическая жизнь не удалась",
+    "Laid-Back Camp (Yuru Camp) — Лагерь на свежем воздухе",
+    "Violet Evergarden: The Movie — Вайолет Эвергарден: Фильм",
+    "Cyberpunk: Edgerunners — Киберпанк: Бегущие по краю",
+    "86 Eighty-Six — Восемьдесят шесть",
+    "Parasyte: The Maxim — Паразит: Учение о жизни",
+    "The Promised Neverland (season 1) — Обещанный Неверленд",
+    "Erased (Boku dake ga Inai Machi) — Город, в котором меня нет",
+    "Terror in Resonance — Эхо террора",
+    "Durarara!! — Дюрарара!!",
+    "Darker than Black — Темнее чёрного",
+    "Elfen Lied — Эльфийская песнь",
+    "Future Diary — Дневник будущего",
+    "Another — Иная",
+    "Guilty Crown — Корона вины",
+    "Pandora Hearts — Сердца Пандоры",
+    "Ashita no Joe — Завтрашний Джо",
+    "Sword Art Online — Мастера меча онлайн",
+    "Fairy Tail — Хвост феи",
+    "Psycho-Pass — Психопаспорт",
+    "Dungeon Meshi — Подземелье вкусностей",
+    "Blue Exorcist — Синий экзорцист",
+    "Fate/Zero — Fate/Zero",
+    "Fate/stay night: Unlimited Blade Works — Судьба: Ночь схватки — Клинков бесконечный край",
+    "Puella Magi Madoka Magica — Девочка-волшебница Мадока Магика",
+    "Natsume’s Book of Friends — Тетрадь дружбы Нацумэ",
+    "ReLIFE — ReLIFE",
+    "Beck — Бек",
+    "Bakuman — Бакуман",
+    "Golden Boy — Золотой парень",
+    "School Rumble — Школьные войны",
+    "Daily Lives of High School Boys — Повседневная жизнь старшеклассников",
+    "Nichijou — Повседневная жизнь",
+    "Saiki Kusuo no Ψ-nan — Разрушительная жизнь Саики Кусо",
+    "K-ON! — Кэйон!",
+    "Free! — Вольный стиль!",
+    "Dragon Ball — Драконий жемчуг",
+    "Planetes — Странники",
+    "Space Brothers — Космические братья",
+    "Mob Psycho 100 — Моб Психо 100",
+    "Kill la Kill — Килл ла Килл",
+    "FLCL (Fooly Cooly) — Фури-Кури",
+    "Serial Experiments Lain — Эксперименты Лэйн",
+    "Perfect Blue — Идеальная грусть",
+    "Bakuman. — Бакуман",
+    "Akira — Акира",
+    "Ergo Proxy — Эрго Прокси",
+    "Texhnolyze — Технолайз",
+    "Black Butler — Тёмный дворецкий",
+    "D.Gray-man — Ди.Грей-мен",
+    "Magi: The Labyrinth of Magic — Маги: Лабиринт волшебства",
+    "Enen no Shouboutai — Пламенная бригада пожарных",
+    "Baccano! — Шумиха!",
+    "Sword Art Online — Мастера Меча Онлайн",
+    "Dororo — Дороро",
+    "Drifters — Скитальцы",
+    "Goblin Slayer — Убийца гоблинов",
+    "Tokyo Ghoul — Токийский гуль",
+    "Tokyo Revengers — Токийские мстители",
+    "Devilman: Crybaby — Девилмэн: Плакса",
+    "Hellsing (TV) — Хеллсинг",
+    "Shaman King — Шаман Кинг",
+    "Soul Eater — Пожиратель душ",
+    "Inuyasha — Инуяша",
+    "Kingdom — Царство",
+    "Kenshin (TV) — Бродяга Кэнсин",
+    "Trigun — Триган",
+    "JoJo’s Bizarre Adventure — Невероятные приключения ДжоДжо",
+    "Barakamon — Баракамон",
+    "Nanatsu no Taizai — Семь смертных грехов",
+    "Land of the Lustrous — Страна самоцветов",
+    "Higurashi: When They Cry — Когда плачут цикады",
+    "Boku dake ga Inai Machi — Город, в котором меня нет",
+    "Black Clover — Чёрный клевер",
+    "Grappler Baki (TV) — Боец Баки",
+    "Josee, the Tiger and the Fish — Дзёсэ, тигр и рыба",
+    "Tenki no Ko — Дитя погоды",
+    "Children Who Chase Lost Voices — Дети, ищущие потерянные голоса",
+    "The Wind Rises — Ветер крепчает",
+    "5 Centimeters per Second — 5 сантиметров в секунду",
+    "Angel’s Egg — Яйцо ангела",
+    "Spy x Family — Семья шпиона",
+]
+
+TOP150_PAGE_SIZE = 10
+
+
+def build_top150_page_text(kind: str, page: int) -> tuple[str, int, int]:
+    data_list = TOP150_POSTER_LIST if kind == "poster" else TOP150_MERGED_LIST
+    total = len(data_list)
+    total_pages = (total + TOP150_PAGE_SIZE - 1) // TOP150_PAGE_SIZE
+    if total_pages == 0:
+        return "Список пуст.", 1, 1
+    if page < 1:
+        page = 1
+    if page > total_pages:
+        page = total_pages
+    start = (page - 1) * TOP150_PAGE_SIZE
+    end = min(start + TOP150_PAGE_SIZE, total)
+    if kind == "poster":
+        header = "🏆 150 лучших аниме — список постера\n"
+    else:
+        header = "🏆 150 лучших аниме — объединённый рейтинг\n"
+    lines = [
+        header,
+        f"Страница {page}/{total_pages}\n",
+    ]
+    for i in range(start, end):
+        pos = i + 1
+        title = data_list[i]
+        lines.append(f"{pos}. {title}")
+    text = "\n".join(lines)
+    return text, page, total_pages
+
+
+def build_top150_page_keyboard(kind: str, page: int, total_pages: int) -> InlineKeyboardMarkup:
+    keyboard = []
+    prefix = "top150_poster_page" if kind == "poster" else "top150_merged_page"
+    if page > 1 or page < total_pages:
+        row = []
+        if page > 1:
+            row.append(InlineKeyboardButton("⬅️ Назад", callback_data=f"{prefix}_{page - 1}"))
+        if page < total_pages:
+            row.append(InlineKeyboardButton("Вперёд ➡️", callback_data=f"{prefix}_{page + 1}"))
+        if row:
+            keyboard.append(row)
+    other_kind = "merged" if kind == "poster" else "poster"
+    other_text = "⭐ Объединённый рейтинг" if kind == "poster" else "📜 Список постера"
+    other_prefix = "top150_merged_page" if other_kind == "merged" else "top150_poster_page"
+    keyboard.append(
+        [InlineKeyboardButton(other_text, callback_data=f"{other_prefix}_1")]
+    )
+    keyboard.append(
+        [
+            InlineKeyboardButton("⬅️ К выбору списка", callback_data="sec_top150"),
+            InlineKeyboardButton("⬅️ Главное меню", callback_data="main_menu"),
+        ]
+    )
+    return InlineKeyboardMarkup(keyboard)
 
 ACCESS_CODES = {
     "AHVIP2025": "vip",
@@ -284,6 +491,8 @@ def default_data():
         "friend_requests": {},
         "posts": {},
         "banned": {},
+        "admins": ADMINS[:],
+        "invites": {},
     }
 
 
@@ -320,6 +529,18 @@ def load_data():
         data["banned"] = {}
     if "version" not in data:
         data["version"] = 1
+    if "admins" not in data:
+        data["admins"] = ADMINS[:]
+    if "invites" not in data:
+        data["invites"] = {}
+
+    # гарантируем, что у каждого поста есть поле caption
+    posts = data.get("posts", {})
+    for mid, info in posts.items():
+        if "caption" not in info:
+            info["caption"] = None
+    data["posts"] = posts
+
     return data
 
 
@@ -342,6 +563,7 @@ def get_user(data, user_id):
             "created_at": int(time.time()),
             "username": None,
             "full_name": None,
+            "weekly_150_start": 0,
         }
     else:
         u = data["users"][uid]
@@ -361,6 +583,8 @@ def get_user(data, user_id):
             u["username"] = None
         if "full_name" not in u:
             u["full_name"] = None
+        if "weekly_150_start" not in u:
+            u["weekly_150_start"] = len(u.get("watched_150", []))
 
     user = data["users"][uid]
     return user
@@ -387,6 +611,16 @@ def inc_section_stat(data, section):
 def has_access(user_data, required_level: str) -> bool:
     user_level = user_data.get("access", "free")
     return ACCESS_LEVELS.get(user_level, 0) >= ACCESS_LEVELS.get(required_level, 0)
+
+
+def is_admin(data, user_id: int) -> bool:
+    admins_from_data = set(data.get("admins", []))
+    base_admins = set(ADMINS)
+    return user_id in admins_from_data or user_id in base_admins
+
+
+def is_root_admin(user_id: int) -> bool:
+    return user_id in ADMINS
 
 
 async def is_subscribed(context: ContextTypes.DEFAULT_TYPE, user_id: int) -> bool:
@@ -427,6 +661,7 @@ def build_main_menu_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton("🎬 Полнометражки", callback_data="sec_movies")],
         [InlineKeyboardButton("🎲 Случайный тайтл", callback_data="rand_title")],
         [InlineKeyboardButton("👤 Мой профиль", callback_data="my_profile")],
+        [InlineKeyboardButton("📩 Предложить тайтл", callback_data="suggest_info")],
         [
             InlineKeyboardButton(
                 "🏠 Открыть канал",
@@ -507,42 +742,6 @@ def build_premium_card(title: dict) -> str:
     )
 
 
-def build_top150_ratings_page(page_index: int):
-    total = len(TOP150_RATINGS)
-    page_size = TOP150_RATINGS_PAGE_SIZE
-    total_pages = (total + page_size - 1) // page_size
-    if page_index < 0:
-        page_index = 0
-    if page_index >= total_pages:
-        page_index = total_pages - 1
-    start = page_index * page_size
-    end = min(start + page_size, total)
-    lines = [
-        "🏆 150 лучших аниме по рейтингам\n",
-        "Список составлен вручную на основе оценок с сайтов:\n"
-        "• MyAnimeList\n"
-        "• Shikimori\n"
-        "• Кинопоиск\n"
-        "• IMDb\n",
-        f"Страница {page_index + 1} из {total_pages}\n",
-    ]
-    lines.extend(TOP150_RATINGS[start:end])
-    text = "\n".join(lines)
-
-    nav_row = []
-    if page_index > 0:
-        nav_row.append(InlineKeyboardButton("⬅️ Назад", callback_data=f"top150rat_page_{page_index - 1}"))
-    if page_index < total_pages - 1:
-        nav_row.append(InlineKeyboardButton("➡️ Далее", callback_data=f"top150rat_page_{page_index + 1}"))
-
-    keyboard = []
-    if nav_row:
-        keyboard.append(nav_row)
-    keyboard.append([InlineKeyboardButton("⬅️ Главное меню", callback_data="main_menu")])
-
-    return text, InlineKeyboardMarkup(keyboard)
-
-
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, data) -> None:
     data["stats"]["started"] += 1
     save_data(data)
@@ -562,6 +761,18 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, dat
         await update.callback_query.edit_message_text(text, reply_markup=reply_markup)
 
 
+async def render_hot_now(data, user_data):
+    hot_titles = [t for t in TITLES if t.get("hot")]
+    hot_titles.sort(key=lambda t: t.get("added_at", 0), reverse=True)
+    if not hot_titles:
+        return SECTION_TEXTS["hot_now"] + "\n\nСписок тайтлов скоро появится."
+    lines = [SECTION_TEXTS["hot_now"].rstrip(), ""]
+    lines.append("🔥 <b>Сейчас в фокусе:</b>")
+    for t in hot_titles[:10]:
+        lines.append(f"• <b>{t['name']}</b> — <code>/title {t['id']}</code>")
+    return "\n".join(lines)
+
+
 async def send_section(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
@@ -575,7 +786,7 @@ async def send_section(
     update_user_names(data, user_id, tg_user)
 
     required_access = SECTION_ACCESS.get(section_key)
-    if required_access and not has_access(user_data, required_access):
+    if required_access and not has_access(user_data, required_level=required_access):
         text = (
             "🔑 Доступ к этому разделу ограничен.\n\n"
             f"Нужен уровень: <b>{required_access}</b>\n"
@@ -620,12 +831,26 @@ async def send_section(
                 await update.effective_message.reply_text(text, reply_markup=kb)
             return
 
-    text = SECTION_TEXTS.get(section_key, "Раздел временно недоступен.")
-    kb = build_section_keyboard(section_key)
-    if from_callback:
-        await update.callback_query.edit_message_text(text, reply_markup=kb)
-    else:
-        await update.effective_message.reply_text(text, reply_markup=kb)
+    if section_key == "top150":
+        text = (
+            SECTION_TEXTS["top150"]
+            + "\n\n"
+            "Выбери формат списка:\n\n"
+            "📜 Список постера — ранги с 1 по 150 как на постере.\n"
+            "⭐ Объединённый рейтинг — сводный список по рейтингу сайтов.\n"
+        )
+        kb = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("📜 Список постера", callback_data="top150_poster_page_1")],
+                [InlineKeyboardButton("⭐ Объединённый рейтинг", callback_data="top150_merged_page_1")],
+                [InlineKeyboardButton("⬅️ Главное меню", callback_data="main_menu")],
+            ]
+        )
+        if from_callback:
+            await update.callback_query.edit_message_text(text, reply_markup=kb)
+        else:
+            await update.effective_message.reply_text(text, reply_markup=kb)
+        return
 
 
 async def send_random_title(
@@ -719,6 +944,12 @@ async def show_profile(
         await update.effective_message.reply_text(text, reply_markup=kb)
 
 
+def ensure_friend_access(user_data):
+    current = user_data.get("access", "free")
+    if ACCESS_LEVELS.get("friend", 1) > ACCESS_LEVELS.get(current, 0):
+        user_data["access"] = "friend"
+
+
 async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = load_data()
     if await abort_if_banned(update, data):
@@ -730,32 +961,75 @@ async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     save_data(data)
 
     args = context.args
-    if args and args[0].strip().lower() == "activate":
-        user_data["activated"] = True
-        save_data(data)
-        text = (
-            "⚡ Профиль активирован!\n\n"
-            f"Твой Telegram ID: <code>{user_id}</code>\n\n"
-            "Теперь ты можешь:\n"
-            "• Добавлять друзей: /friend_invite &lt;ID&gt;\n"
-            "• Смотреть входящие заявки: /friend_requests\n"
-            "• Список друзей: /friend_list\n\n"
-            "Нажми кнопку ниже, чтобы открыть главное меню."
-        )
-        kb = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("📚 Открыть главное меню", callback_data="main_menu")]]
-        )
-        await update.effective_message.reply_text(text, reply_markup=kb)
-        return
+
+    if args:
+        arg0 = args[0].strip()
+        if arg0.lower() == "activate":
+            user_data["activated"] = True
+            save_data(data)
+            text = (
+                "⚡ Профиль активирован!\n\n"
+                f"Твой Telegram ID: <code>{user_id}</code>\n\n"
+                "Теперь ты можешь:\n"
+                "• Добавлять друзей через /friend_invite\n"
+                "• Смотреть входящие заявки: /friend_requests\n"
+                "• Список друзей: /friend_list\n\n"
+                "Нажми кнопку ниже, чтобы открыть главное меню."
+            )
+            kb = InlineKeyboardMarkup(
+                [[InlineKeyboardButton("📚 Открыть главное меню", callback_data="main_menu")]]
+            )
+            await update.effective_message.reply_text(text, reply_markup=kb)
+            return
+
+        if arg0.startswith("friend_"):
+            token = arg0
+            invites = data.get("invites", {})
+            info = invites.get(token)
+            if info and info.get("type") == "friend":
+                ensure_friend_access(user_data)
+                user_data["activated"] = True
+                info["uses"] = info.get("uses", 0) + 1
+                max_uses = info.get("max_uses")
+                if max_uses is not None and info["uses"] >= max_uses:
+                    invites.pop(token, None)
+                data["invites"] = invites
+                save_data(data)
+                text = (
+                    "🤝 Ты вошёл по приглашению друга.\n\n"
+                    "Профиль активирован, уровень доступа: <b>friend</b>.\n\n"
+                    "Открывай главное меню и выбирай тайтлы."
+                )
+                kb = InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("📚 Открыть главное меню", callback_data="main_menu")]]
+                )
+                await update.effective_message.reply_text(text, reply_markup=kb)
+                return
 
     if not user_data.get("activated", False):
+        subscribed = await is_subscribed(context, user_id)
+        if subscribed:
+            user_data["activated"] = True
+            save_data(data)
+            await show_main_menu(update, context, data)
+            return
+
         text = (
             "⚡ Перед началом нужно активировать профиль.\n\n"
-            "Это свяжет твой Telegram-аккаунт с прогрессом в AnimeHUB | Dream.\n\n"
-            "Нажми кнопку ниже, чтобы активировать профиль."
+            "1) Подпишись на канал AnimeHUB | Dream.\n"
+            "2) Нажми кнопку «Я подписан ✅» — я проверю подписку и активирую профиль.\n\n"
+            "Без активации прогресс и избранное не будут сохраняться."
         )
         kb = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("⚡ Активировать профиль", callback_data="activate_profile")]]
+            [
+                [
+                    InlineKeyboardButton(
+                        "🏠 Открыть канал",
+                        url=f"https://t.me/{CHANNEL_USERNAME.lstrip('@')}",
+                    )
+                ],
+                [InlineKeyboardButton("✅ Я подписан", callback_data="verify_sub")],
+            ]
         )
         await update.effective_message.reply_text(text, reply_markup=kb)
         return
@@ -781,7 +1055,7 @@ async def handle_code(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     if not context.args:
         await update.effective_message.reply_text(
-            "Введите код после команды, например:\n/code AHVIP2025"
+            "Введите код после команды, например:\n<code>/code AHVIP2025</code>"
         )
         return
     code = context.args[0].strip()
@@ -791,7 +1065,7 @@ async def handle_code(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         return
     user_data["access"] = level
     save_data(data)
-    await update.effective_message.reply_text(f"✅ Код принят. Новый уровень доступа: {level}")
+    await update.effective_message.reply_text(f"✅ Код принят. Новый уровень доступа: <b>{level}</b>")
 
 
 async def handle_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -806,22 +1080,22 @@ async def handle_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
-    if ADMINS and user_id not in ADMINS:
+    if not is_admin(data, user_id):
         await update.effective_message.reply_text("Эта команда доступна только администратору.")
         return
     users_count = len(data["users"])
     sections = data["stats"]["sections"]
     parts = [
-        f"👥 Пользователей в базе: {users_count}",
-        f"🎲 Случайный тайтл использован: {data['stats']['random_used']} раз",
-        f"▶ Постов создано через /post: {data['stats']['posts_created']}",
-        f"📝 Постов отредактировано через /edit_post: {data['stats']['posts_edited']}",
-        f"🧾 Черновиков через /post_draft: {data['stats']['drafts_created']}",
-        f"🔁 Репостов через /repost: {data['stats']['reposts']}",
-        "📊 Переходы по разделам:",
+        f"👥 Пользователей в базе: <b>{users_count}</b>",
+        f"🎲 Случайный тайтл использован: <b>{data['stats']['random_used']}</b> раз",
+        f"▶ Постов создано через /post: <b>{data['stats']['posts_created']}</b>",
+        f"📝 Постов отредактировано через /edit_post: <b>{data['stats']['posts_edited']}</b>",
+        f"🧾 Черновиков через /post_draft: <b>{data['stats']['drafts_created']}</b>",
+        f"🔁 Репостов через /repost: <b>{data['stats']['reposts']}</b>",
+        "\n📊 Переходы по разделам:",
     ]
     for k, v in sections.items():
-        parts.append(f"• {k}: {v}")
+        parts.append(f"• <b>{k}</b>: {v}")
     text = "\n".join(parts)
     await update.effective_message.reply_text(text)
 
@@ -831,7 +1105,7 @@ async def handle_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
-    if ADMINS and user_id not in ADMINS:
+    if not is_admin(data, user_id):
         await update.effective_message.reply_text("Эта команда только для администратора.")
         return
 
@@ -843,10 +1117,13 @@ async def handle_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await update.effective_message.reply_text("Пока нет ни одного активированного пользователя.")
         return
 
-    lines = [f"👥 Активированные пользователи: {total}"]
+    lines = [f"👥 Активированные пользователи: <b>{total}</b>"]
     for uid, u in activated_users:
         name = u.get("full_name") or f"Пользователь {uid}"
-        lines.append(f"• <a href='tg://user?id={uid}'>{name}</a> — ID: <code>{uid}</code>")
+        lines.append(
+            f"• <a href='tg://user?id={uid}'>{name}</a> — <code>{uid}</code>"
+        )
+
     text = "\n".join(lines)
     await update.effective_message.reply_text(text)
 
@@ -869,12 +1146,11 @@ async def handle_favorites(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
         return
 
-    lines = ["⭐ Твои избранные тайтлы:"]
-
+    lines = ["⭐ <b>Твои избранные тайтлы:</b>"]
     for fid in favs:
         t = next((t for t in TITLES if t["id"] == fid), None)
         if t:
-            lines.append(f"• <b>{t['name']}</b> — /title {t['id']}")
+            lines.append(f"• <b>{t['name']}</b> — <code>/title {t['id']}</code>")
         else:
             lines.append(f"• Неизвестный тайтл: {fid}")
     text = "\n".join(lines)
@@ -892,7 +1168,7 @@ async def handle_watched_add(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     if not context.args:
         await update.effective_message.reply_text(
-            "Использование:\n/watched_add <id тайтла>\n\nНапример:\n/watched_add solo_leveling"
+            "Использование:\n<code>/watched_add solo_leveling</code>"
         )
         return
     tid = context.args[0].strip().lower()
@@ -912,12 +1188,11 @@ async def handle_watched_add(update: Update, context: ContextTypes.DEFAULT_TYPE)
             )
         else:
             await update.effective_message.reply_text(
-                f"Этот тайтл уже отмечен как просмотренный в списке «150 лучших аниме»."
+                "Этот тайтл уже отмечен как просмотренный в списке «150 лучших аниме»."
             )
     else:
         await update.effective_message.reply_text(
-            "Этот тайтл сейчас не помечен как часть списка «150 лучших аниме».\n"
-            "Но ты всё равно можешь следить за прогрессом по постеру вручную."
+            "Этот тайтл сейчас не помечен как часть списка «150 лучших аниме»."
         )
 
 
@@ -932,7 +1207,7 @@ async def handle_watched_remove(update: Update, context: ContextTypes.DEFAULT_TY
 
     if not context.args:
         await update.effective_message.reply_text(
-            "Использование:\n/watched_remove <id тайтла>\n\nНапример:\n/watched_remove solo_leveling"
+            "Использование:\n<code>/watched_remove solo_leveling</code>"
         )
         return
     tid = context.args[0].strip().lower()
@@ -960,89 +1235,163 @@ async def handle_watched_list(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not watched:
         msg = "Ты пока не отметил ни одного тайтла из «150 лучших аниме»."
         if total_top150 > 0:
-            msg += "\n\nДобавь просмотренный тайтл командой:\n/watched_add <id>"
+            msg += "\n\nДобавь просмотренный тайтл командой:\n<code>/watched_add id</code>"
         await update.effective_message.reply_text(msg)
         return
 
-    lines = ["🏆 Твои просмотренные тайтлы из «150 лучших аниме»:"]
-
+    lines = ["🏆 <b>Твой прогресс по «150 лучшим аниме»:</b>"]
     for tid in watched:
         t = next((t for t in TITLES if t["id"] == tid), None)
         if t:
-            lines.append(f"• <b>{t['name']}</b> — /title {t['id']}")
+            lines.append(f"• <b>{t['name']}</b> — <code>/title {t['id']}</code>")
         else:
             lines.append(f"• Неизвестный тайтл: {tid}")
 
     if total_top150 > 0:
         percent = round(len(watched) / total_top150 * 100, 1)
-        lines.append(f"\nПрогресс: {len(watched)}/{total_top150} ({percent}%)")
+        lines.append(f"\nПрогресс: <b>{len(watched)}/{total_top150}</b> ({percent}%)")
 
     text = "\n".join(lines)
     await update.effective_message.reply_text(text)
+
+
+def weekly_rank(diff):
+    if diff <= 0:
+        return "Спящий наблюдатель", 1
+    if diff == 1:
+        return "Новичок", 2
+    if 2 <= diff <= 3:
+        return "Охотник", 5
+    if 4 <= diff <= 6:
+        return "Герой", 8
+    if 7 <= diff <= 10:
+        return "Легенда", 0
+    return "Легенда", 0
+
+
+async def handle_weekly(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    if await abort_if_banned(update, data):
+        return
+    user_id = update.effective_user.id
+    tg_user = update.effective_user
+    user = get_user(data, user_id)
+    update_user_names(data, user_id, tg_user)
+
+    total = len(user.get("watched_150", []))
+    base = user.get("weekly_150_start", total)
+    diff = total - base
+    rank, next_target = weekly_rank(diff)
+
+    if diff <= 0:
+        msg = (
+            "🏆 Еженедельный прогресс по «150 лучшим аниме»\n\n"
+            "За эту неделю ты не добавил новых тайтлов в список 150.\n"
+            f"Текущий ранг: <b>{rank}</b>.\n\n"
+            "Добавь хотя бы один тайтл и попробуй ещё раз позже."
+        )
+    else:
+        if next_target > 0 and next_target > diff:
+            need = next_target - diff
+            msg_next = f"До следующего уровня осталось всего <b>{need}</b> тайтл(ов)."
+        else:
+            msg_next = "Ты на максимальном уровне этой недели. Жёстко."
+        msg = (
+            "🏆 Еженедельный прогресс по «150 лучшим аниме»\n\n"
+            f"За эту неделю ты посмотрел и отметил <b>{diff}</b> новых тайтл(ов) из постера 150.\n"
+            f"Текущий ранг: <b>{rank}</b>.\n\n"
+            f"{msg_next}\n\n"
+            f"Всего в прогрессе 150 сейчас: <b>{total}</b>."
+        )
+
+    user["weekly_150_start"] = total
+    save_data(data)
+    await update.effective_message.reply_text(msg)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = load_data()
     if await abort_if_banned(update, data):
         return
+
     user_id = update.effective_user.id
-    if user_id in ADMINS:
+    is_admin_user = is_admin(data, user_id)
+
+    if is_admin_user:
         text = (
-            "🛠 <b>Панель администратора</b>\n\n"
-            "📦 Основное:\n"
-            "• /start – запуск бота\n"
-            "• /menu – главное меню\n"
-            "• /help – это сообщение\n"
-            "• /top150_ratings – 150 лучших по рейтингам\n\n"
-            "👥 Пользователи:\n"
-            "• /profile – мой профиль\n"
-            "• /favorites – избранные тайтлы\n"
-            "• /watched_add &lt;id&gt; – добавить в прогресс 150\n"
-            "• /watched_remove &lt;id&gt; – убрать из прогресса 150\n"
-            "• /watched_list – показать прогресс 150\n"
-            "• /myid – показать мой ID\n\n"
-            "🤝 Друзья:\n"
-            "• /friend_invite &lt;ID&gt; – пригласить в друзья\n"
-            "• /friend_requests – входящие заявки\n"
-            "• /friend_accept &lt;ID&gt; – принять заявку\n"
-            "• /friend_list – список друзей\n"
-            "• /friend_vs &lt;ID&gt; – сравнить прогресс\n\n"
-            "📨 Посты и канал:\n"
-            "• /post – мастер создания поста\n"
-            "• /post_draft – создать черновик поста\n"
-            "• /edit_post &lt;ссылка/ID&gt; – отредактировать пост\n"
-            "• /link_post &lt;ссылка/ID&gt; &lt;title_id&gt; – привязать пост к тайтлу\n"
-            "• /repost &lt;ссылка/ID&gt; – пересоздать пост в канале\n\n"
-            "📊 Админ-инструменты:\n"
-            "• /stats – статистика бота\n"
-            "• /users – список активированных пользователей\n"
-            "• /ban_user &lt;ID&gt; – заблокировать пользователя\n"
-            "• /unban_user &lt;ID&gt; – разблокировать пользователя\n"
+            "🛠 <b>Помощь (режим админа)</b>\n\n"
+            "📌 <b>Основное</b>\n"
+            "• <code>/start</code> – запустить бота\n"
+            "• <code>/menu</code> – главное меню\n"
+            "• <code>/help</code> – это меню\n"
+            "• <code>/profile</code> – мой профиль\n"
+            "• <code>/myid</code> – мой Telegram ID\n"
+            "• <code>/title id</code> – карточка тайтла\n"
+            "• <code>/search текст</code> – поиск по постам и тайтлам\n"
+            "• <code>/code код</code> – ввести код доступа\n"
+            "• <code>/weekly</code> – недельный прогресс по 150\n\n"
+            "⭐ <b>Избранное и 150 лучших</b>\n"
+            "• <code>/favorites</code> – избранные тайтлы\n"
+            "• <code>/watched_add id</code> – добавить в «150 лучших»\n"
+            "• <code>/watched_remove id</code> – убрать из «150 лучших»\n"
+            "• <code>/watched_list</code> – мой прогресс 150\n\n"
+            "👥 <b>Друзья</b>\n"
+            "• <code>/friend_invite</code> – добавить друга\n"
+            "  ↳ по ответу на сообщение, @username, ссылке или ID\n"
+            "• <code>/invite_friend</code> – выдать приглашение уровня friend\n"
+            "• <code>/friend_requests</code> – входящие заявки\n"
+            "• <code>/friend_accept ID</code> – принять заявку\n"
+            "• <code>/friend_list</code> – список друзей\n"
+            "• <code>/friend_vs ID</code> – сравнить прогресс\n\n"
+            "📨 <b>Обратная связь</b>\n"
+            "• <code>/suggest текст</code> – отправить предложение/фидбек админам\n\n"
+            "📨 <b>Посты и канал</b>\n"
+            "• <code>/post</code> – мастер поста в канал\n"
+            "• <code>/post_draft</code> – черновик с подтверждением\n"
+            "• <code>/edit_post ссылка/ID</code> – изменить пост\n"
+            "• <code>/link_post ссылка/ID title_id</code> – привязать к тайтлу\n"
+            "• <code>/repost ссылка/ID</code> – пересоздать пост в канале\n\n"
+            "🧩 <b>Управление ботом</b>\n"
+            "• <code>/stats</code> – статистика бота\n"
+            "• <code>/users</code> – активированные пользователи\n"
+            "• <code>/ban_user ID</code> – заблокировать в боте\n"
+            "• <code>/unban_user ID</code> – разблокировать в боте\n"
+            "• <code>/admin_list</code> – список админов\n"
+            "• <code>/add_admin ID</code> – добавить админа (root)\n"
+            "• <code>/remove_admin ID</code> – убрать админа (кроме root)\n\n"
+            "Навигация по аниме — через кнопки под сообщениями."
         )
     else:
         text = (
-            "📖 <b>Навигация по AnimeHUB | Dream</b>\n\n"
-            "🔹 Основное:\n"
-            "• /start – запустить бота\n"
-            "• /menu – главное меню\n"
-            "• /help – это сообщение\n"
-            "• /top150_ratings – «150 лучших аниме» по рейтингам\n\n"
-            "👤 Профиль:\n"
-            "• /profile – мой профиль\n"
-            "• /favorites – мои избранные тайтлы\n"
-            "• /watched_add &lt;id&gt; – отметить тайтл из 150 как просмотренный\n"
-            "• /watched_remove &lt;id&gt; – убрать тайтл из прогресса 150\n"
-            "• /watched_list – мой прогресс по 150\n"
-            "• /myid – показать мой Telegram ID\n\n"
-            "🤝 Друзья:\n"
-            "• /friend_invite &lt;ID&gt; – отправить приглашение в друзья\n"
-            "• /friend_requests – входящие заявки\n"
-            "• /friend_accept &lt;ID&gt; – принять заявку\n"
-            "• /friend_list – список друзей\n"
-            "• /friend_vs &lt;ID&gt; – сравнить прогресс с другом\n\n"
-            "Основная навигация по аниме доступна через кнопки под сообщениями: "
-            "тайтлы, популярное, 150 лучших, полнометражки."
+            "📖 <b>Помощь по боту AnimeHUB | Dream</b>\n\n"
+            "📌 <b>Основное</b>\n"
+            "• <code>/start</code> – запустить бота\n"
+            "• <code>/menu</code> – главное меню\n"
+            "• <code>/help</code> – это меню\n"
+            "• <code>/profile</code> – мой профиль\n"
+            "• <code>/myid</code> – мой Telegram ID\n"
+            "• <code>/title id</code> – карточка тайтла\n"
+            "• <code>/search текст</code> – поиск по постам и тайтлам\n"
+            "• <code>/code код</code> – ввести код доступа (если есть)\n"
+            "• <code>/weekly</code> – мой недельный прогресс по 150\n\n"
+            "⭐ <b>Избранное и «150 лучших»</b>\n"
+            "• <code>/favorites</code> – мои избранные тайтлы\n"
+            "• <code>/watched_add id</code> – добавить тайтл в прогресс 150\n"
+            "• <code>/watched_remove id</code> – убрать тайтл из прогресса 150\n"
+            "• <code>/watched_list</code> – показать мой прогресс 150\n\n"
+            "👥 <b>Друзья</b>\n"
+            "• <code>/friend_invite</code> – добавить друга\n"
+            "  ↳ по ответу на сообщение, @username, ссылке или ID\n"
+            "• <code>/invite_friend</code> – выдать другу ссылку-приглашение (уровень friend)\n"
+            "• <code>/friend_requests</code> – входящие заявки в друзья\n"
+            "• <code>/friend_accept ID</code> – принять заявку\n"
+            "• <code>/friend_list</code> – список друзей\n"
+            "• <code>/friend_vs ID</code> – сравнить прогресс по аниме\n\n"
+            "📨 <b>Обратная связь</b>\n"
+            "• <code>/suggest текст</code> – предложить тайтл или идею для канала\n\n"
+            "Навигация по аниме — через кнопки под сообщениями: тайтлы, популярное, 150 лучших, полнометражки."
         )
+
     await update.effective_message.reply_text(text)
 
 
@@ -1057,11 +1406,8 @@ async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     if not context.args:
         await update.effective_message.reply_text(
-            "Использование:\n/title <id>\n\n"
-            "Примеры:\n"
-            "/title solo_leveling\n"
-            "/title death_note\n"
-            "/title made_in_abyss"
+            "Использование:\n"
+            "<code>/title solo_leveling</code>"
         )
         return
 
@@ -1078,12 +1424,70 @@ async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             f"Нужен уровень: <b>{required}</b>\n"
             f"Твой уровень сейчас: <b>{user_data.get('access', 'free')}</b>\n\n"
             "Если у тебя есть код доступа, введи его командой:\n"
-            "/code &lt;код&gt;"
+            "<code>/code код</code>"
         )
         return
 
     card = build_premium_card(title)
     await update.effective_message.reply_text(card)
+
+
+async def handle_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    if await abort_if_banned(update, data):
+        return
+
+    if not context.args:
+        await update.effective_message.reply_text(
+            "Использование:\n<code>/search гуррен-лаганн</code>"
+        )
+        return
+
+    query = " ".join(context.args).strip().lower()
+    base_link = f"https://t.me/{CHANNEL_USERNAME.lstrip('@')}"
+
+    # 1) ищем по постам (caption)
+    posts = data.get("posts", {})
+    post_matches = []
+    for mid, info in posts.items():
+        cap = (info.get("caption") or "")
+        if query in cap.lower():
+            post_matches.append((int(mid), cap))
+
+    if post_matches:
+        post_matches.sort(key=lambda x: x[0])
+        lines = ["🔎 <b>Найденные посты в канале:</b>"]
+        for mid, cap in post_matches[:15]:
+            first_line = cap.strip().splitlines()[0] if cap.strip() else f"Пост #{mid}"
+            if len(first_line) > 50:
+                first_line = first_line[:47] + "..."
+            url = f"{base_link}/{mid}"
+            lines.append(f"• <a href='{url}'>{first_line}</a>")
+        await update.effective_message.reply_text("\n".join(lines))
+        return
+
+    # 2) если по постам ничего – ищем по TITLES, как раньше
+    results = []
+    for t in TITLES:
+        name = t.get("name", "").lower()
+        tid = t.get("id", "").lower()
+        if query in name or query in tid:
+            results.append(t)
+
+    if not results:
+        await update.effective_message.reply_text("Ничего не найдено по этому запросу.")
+        return
+
+    if len(results) == 1:
+        t = results[0]
+        card = build_premium_card(t)
+        await update.effective_message.reply_text(card)
+        return
+
+    lines = ["🔎 <b>Найденные тайтлы:</b>"]
+    for t in results[:20]:
+        lines.append(f"• <b>{t['name']}</b> — <code>/title {t['id']}</code>")
+    await update.effective_message.reply_text("\n".join(lines))
 
 
 async def handle_myid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1093,9 +1497,8 @@ async def handle_myid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     user_id = update.effective_user.id
     text = (
         f"Твой Telegram ID: <code>{user_id}</code>\n\n"
-        "Отправь его другу, чтобы он смог добавить тебя в друзья:\n"
-        "/friend_invite "
-        f"{user_id}"
+        "Отправь его другу, чтобы он смог добавить тебя в друзья через:\n"
+        "<code>/friend_invite ID</code>"
     )
     await update.effective_message.reply_text(text)
 
@@ -1104,25 +1507,61 @@ async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYP
     data = load_data()
     if await abort_if_banned(update, data):
         return
+
     from_id = update.effective_user.id
     if check_rate_limit(from_id, "friend_invite", 2.0):
         await update.effective_message.reply_text("Слишком часто отправляешь приглашения, попробуй позже.")
         return
+
     tg_user = update.effective_user
     from_user = get_user(data, from_id)
     update_user_names(data, from_id, tg_user)
 
-    if not context.args:
-        await update.effective_message.reply_text(
-            "Использование:\n/friend_invite <ID друга>\n\n"
-            "ID друг может узнать командой /myid у себя."
-        )
-        return
-    try:
-        target_id = int(context.args[0])
-    except ValueError:
-        await update.effective_message.reply_text("ID должен быть числом.")
-        return
+    target_id = None
+    if update.message and update.message.reply_to_message:
+        reply_user = update.message.reply_to_message.from_user
+        if reply_user and not reply_user.is_bot:
+            target_id = reply_user.id
+
+    if target_id is None:
+        if not context.args:
+            await update.effective_message.reply_text(
+                "Как добавить друга:\n\n"
+                "• Ответь на его сообщение и напиши: <code>/friend_invite</code>\n"
+                "• Или: <code>/friend_invite @username</code>\n"
+                "• Или: <code>/friend_invite ссылка_на_профиль</code>\n"
+                "  (например, <code>https://t.me/username</code>)\n"
+                "• Или: <code>/friend_invite ID</code>\n\n"
+                "ID друг может узнать командой <code>/myid</code> у себя."
+            )
+            return
+
+        raw = context.args[0].strip()
+        token = raw
+        if "t.me/" in raw:
+            part = raw.split("t.me/", 1)[1]
+            for sep in ("?", "/"):
+                if sep in part:
+                    part = part.split(sep, 1)[0]
+            token = part
+
+        if token.startswith("@"):
+            token = token[1:]
+
+        if token.isdigit():
+            target_id = int(token)
+        else:
+            try:
+                chat = await context.bot.get_chat(f"@{token}")
+                target_id = chat.id
+            except Exception:
+                await update.effective_message.reply_text(
+                    "Не удалось найти пользователя по этому username/ссылке.\n\n"
+                    "Убедись, что:\n"
+                    "• друг уже писал этому боту\n"
+                    "• указан корректный @username или ссылка вида <code>https://t.me/username</code>"
+                )
+                return
 
     if target_id == from_id:
         await update.effective_message.reply_text("Нельзя добавить в друзья самого себя.")
@@ -1150,7 +1589,7 @@ async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYP
 
     await update.effective_message.reply_text(
         "✅ Приглашение в друзья отправлено.\n"
-        "Скажи другу запустить бота и набрать /friend_requests, чтобы принять."
+        "Скажи другу запустить бота и набрать <code>/friend_requests</code>, чтобы принять."
     )
 
     try:
@@ -1160,11 +1599,58 @@ async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYP
                 "🤝 Тебе пришло приглашение в друзья!\n\n"
                 f"От пользователя: <a href='tg://user?id={from_id}'>{from_id}</a>\n\n"
                 "Чтобы посмотреть и принять приглашение, набери команду:\n"
-                "/friend_requests"
+                "<code>/friend_requests</code>"
             ),
+            parse_mode=ParseMode.HTML,
         )
     except Exception:
         pass
+
+
+async def handle_invite_friend(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    if await abort_if_banned(update, data):
+        return
+
+    from_id = update.effective_user.id
+    user = get_user(data, from_id)
+    if not user.get("activated"):
+        await update.effective_message.reply_text(
+            "Сначала активируй профиль через /start, а потом создавай приглашения."
+        )
+        return
+
+    if check_rate_limit(from_id, "invite_friend", 5.0):
+        await update.effective_message.reply_text("Слишком часто создаёшь приглашения, попробуй чуть позже.")
+        return
+
+    invites = data.get("invites", {})
+    while True:
+        token_suffix = "".join(random.choices("abcdefghijklmnopqrstuvwxyz0123456789", k=8))
+        token = f"friend_{token_suffix}"
+        if token not in invites:
+            break
+
+    invites[token] = {
+        "type": "friend",
+        "created_by": from_id,
+        "created_at": int(time.time()),
+        "uses": 0,
+        "max_uses": 5,
+    }
+    data["invites"] = invites
+    save_data(data)
+
+    bot_username = context.bot.username
+    link = f"https://t.me/{bot_username}?start={token}"
+
+    await update.effective_message.reply_text(
+        "🎁 Приглашение уровня <b>friend</b> создано.\n\n"
+        "Отправь эту ссылку другу. Когда он зайдёт через неё и нажмёт /start,\n"
+        "его профиль автоматически активируется с уровнем доступа <b>friend</b>.\n\n"
+        f"Ссылка:\n<code>{link}</code>\n\n"
+        "Лимит: до 5 использований."
+    )
 
 
 async def handle_friend_requests(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1178,11 +1664,10 @@ async def handle_friend_requests(update: Update, context: ContextTypes.DEFAULT_T
         await update.effective_message.reply_text("У тебя нет входящих приглашений в друзья.")
         return
 
-    lines = ["📨 Входящие приглашения в друзья:"]
+    lines = ["📨 <b>Входящие приглашения в друзья:</b>"]
     for rid in reqs:
         lines.append(
-            f"• <a href='tg://user?id={rid}'>Пользователь {rid}</a> — принять: "
-            f"/friend_accept {rid}"
+            f"• <a href='tg://user?id={rid}'>Пользователь {rid}</a> — принять: <code>/friend_accept {rid}</code>"
         )
     text = "\n".join(lines)
     await update.effective_message.reply_text(text)
@@ -1197,8 +1682,8 @@ async def handle_friend_accept(update: Update, context: ContextTypes.DEFAULT_TYP
 
     if not context.args:
         await update.effective_message.reply_text(
-            "Использование:\n/friend_accept <ID>\n\n"
-            "Посмотри список входящих заявок: /friend_requests"
+            "Использование:\n<code>/friend_accept ID</code>\n\n"
+            "Посмотри список входящих заявок: <code>/friend_requests</code>"
         )
         return
     try:
@@ -1234,8 +1719,7 @@ async def handle_friend_accept(update: Update, context: ContextTypes.DEFAULT_TYP
 
     await update.effective_message.reply_text(
         f"✅ Пользователь {other_id} добавлен в друзья.\n"
-        "Теперь вы можете сравнивать прогресс по аниме: /friend_vs "
-        f"{other_id}"
+        f"Теперь вы можете сравнивать прогресс по аниме: <code>/friend_vs {other_id}</code>"
     )
 
 
@@ -1252,16 +1736,16 @@ async def handle_friend_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not friends:
         await update.effective_message.reply_text(
             "У тебя пока нет друзей в боте.\n"
-            "Отправь свой ID (/myid) другу и пусть он добавит тебя через /friend_invite."
+            "Отправь свой ID (<code>/myid</code>) другу и пусть он добавит тебя через <code>/friend_invite</code>."
         )
         return
 
-    lines = ["🤝 Твой список друзей:"]
+    lines = ["🤝 <b>Твой список друзей:</b>"]
     for fid in friends:
         fdata = get_user(data, int(fid))
         name = fdata.get("full_name") or f"Пользователь {fid}"
         lines.append(f"• <a href='tg://user?id={fid}'>{name}</a>")
-    lines.append("\nЧтобы сравнить прогресс, используй:\n/friend_vs <ID друга>")
+    lines.append("\nЧтобы сравнить прогресс, используй:\n<code>/friend_vs ID_друга</code>")
     text = "\n".join(lines)
     await update.effective_message.reply_text(text)
 
@@ -1273,8 +1757,8 @@ async def handle_friend_vs(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     user_id = update.effective_user.id
     if not context.args:
         await update.effective_message.reply_text(
-            "Использование:\n/friend_vs <ID друга>\n\n"
-            "Сначала посмотри список друзей: /friend_list"
+            "Использование:\n<code>/friend_vs ID_друга</code>\n\n"
+            "Сначала посмотри список друзей: <code>/friend_list</code>"
         )
         return
     try:
@@ -1302,27 +1786,27 @@ async def handle_friend_vs(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     o_150 = len(other_data.get("watched_150", []))
 
     if u_fav > o_fav:
-        fav_result = "По количеству тайтлов (избранное) побеждаешь ты."
+        fav_result = "По количеству тайтлов в избранном побеждаешь <b>ты</b>."
     elif u_fav < o_fav:
-        fav_result = "По количеству тайтлов (избранное) пока лидирует твой друг."
+        fav_result = "По количеству тайтлов в избранном пока лидирует <b>твой друг</b>."
     else:
-        fav_result = "По количеству тайтлов в избранном у вас ничья."
+        fav_result = "По избранному у вас <b>ничья</b>."
 
     if u_150 > o_150:
-        top_result = "По «150 лучшим аниме» побеждаешь ты."
+        top_result = "По «150 лучшим аниме» побеждаешь <b>ты</b>."
     elif u_150 < o_150:
-        top_result = "По «150 лучшим аниме» пока лидирует твой друг."
+        top_result = "По «150 лучшим аниме» пока лидирует <b>твой друг</b>."
     else:
-        top_result = "По «150 лучшим аниме» у вас ничья."
+        top_result = "По «150 лучшим аниме» у вас <b>ничья</b>."
 
     text = (
-        "⚔ Сравнение аниме-прогресса\n\n"
+        "⚔ <b>Сравнение аниме-прогресса</b>\n\n"
         f"Ты:\n"
-        f"• Избранных тайтлов: {u_fav}\n"
-        f"• Из «150 лучших аниме»: {u_150}\n\n"
+        f"• Избранных тайтлов: <b>{u_fav}</b>\n"
+        f"• Из «150 лучших аниме»: <b>{u_150}</b>\n\n"
         f"Друг ({other_id}):\n"
-        f"• Избранных тайтлов: {o_fav}\n"
-        f"• Из «150 лучших аниме»: {o_150}\n\n"
+        f"• Избранных тайтлов: <b>{o_fav}</b>\n"
+        f"• Из «150 лучших аниме»: <b>{o_150}</b>\n\n"
         f"{fav_result}\n"
         f"{top_result}"
     )
@@ -1341,14 +1825,51 @@ async def handle_friends_callback(update: Update, context: ContextTypes.DEFAULT_
     await handle_friend_list(update, context)
 
 
+async def handle_suggest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    if await abort_if_banned(update, data):
+        return
+    user = update.effective_user
+    uid = user.id
+
+    if not context.args:
+        await update.effective_message.reply_text(
+            "Отправь предложение или идею в формате:\n"
+            "<code>/suggest хочу увидеть вот такой тайтл...</code>"
+        )
+        return
+
+    text = " ".join(context.args).strip()
+    if not text:
+        await update.effective_message.reply_text("Текст предложения пустой.")
+        return
+
+    admins_all = set(ADMINS) | set(data.get("admins", []))
+    for aid in admins_all:
+        try:
+            await context.bot.send_message(
+                chat_id=aid,
+                text=(
+                    "📩 <b>Новое предложение от пользователя</b>\n\n"
+                    f"От: <a href='tg://user?id={uid}'>{uid}</a>\n\n"
+                    f"Текст:\n{text}"
+                ),
+                parse_mode=ParseMode.HTML,
+            )
+        except Exception:
+            pass
+
+    await update.effective_message.reply_text("Спасибо! Твоё предложение отправлено админам.")
+
+
 async def handle_ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = load_data()
     user_id = update.effective_user.id
-    if ADMINS and user_id not in ADMINS:
+    if not is_admin(data, user_id):
         await update.effective_message.reply_text("Эта команда только для админа.")
         return
     if not context.args:
-        await update.effective_message.reply_text("Использование:\n/ban_user <ID>")
+        await update.effective_message.reply_text("Использование:\n<code>/ban_user ID</code>")
         return
     try:
         target_id = int(context.args[0])
@@ -1366,11 +1887,11 @@ async def handle_ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def handle_unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = load_data()
     user_id = update.effective_user.id
-    if ADMINS and user_id not in ADMINS:
+    if not is_admin(data, user_id):
         await update.effective_message.reply_text("Эта команда только для админа.")
         return
     if not context.args:
-        await update.effective_message.reply_text("Использование:\n/unban_user <ID>")
+        await update.effective_message.reply_text("Использование:\n<code>/unban_user ID</code>")
         return
     try:
         target_id = int(context.args[0])
@@ -1388,12 +1909,85 @@ async def handle_unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await update.effective_message.reply_text("Этот пользователь не был заблокирован.")
 
 
-async def handle_top150_ratings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def handle_admin_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = load_data()
     if await abort_if_banned(update, data):
         return
-    text, kb = build_top150_ratings_page(0)
-    await update.effective_message.reply_text(text, reply_markup=kb)
+    user_id = update.effective_user.id
+    if not is_admin(data, user_id):
+        await update.effective_message.reply_text("Эта команда только для админов.")
+        return
+
+    admins_file = set(data.get("admins", []))
+    base_admins = set(ADMINS)
+    all_admins = sorted(admins_file | base_admins)
+
+    lines = ["🔐 <b>Список админов:</b>"]
+    for aid in all_admins:
+        mark = " (root)" if aid in base_admins else ""
+        lines.append(f"• <a href='tg://user?id={aid}'>{aid}</a>{mark}")
+    text = "\n".join(lines)
+    await update.effective_message.reply_text(text)
+
+
+async def handle_add_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    if await abort_if_banned(update, data):
+        return
+    user_id = update.effective_user.id
+    if not is_root_admin(user_id):
+        await update.effective_message.reply_text("Добавлять админов может только корневой админ.")
+        return
+    if not context.args:
+        await update.effective_message.reply_text("Использование:\n<code>/add_admin ID</code>")
+        return
+    try:
+        target_id = int(context.args[0])
+    except ValueError:
+        await update.effective_message.reply_text("ID должен быть числом.")
+        return
+
+    admins_list = data.get("admins", [])
+    if target_id in admins_list or target_id in ADMINS:
+        await update.effective_message.reply_text("Этот пользователь уже админ.")
+        return
+
+    admins_list.append(target_id)
+    data["admins"] = admins_list
+    save_data(data)
+    await update.effective_message.reply_text(f"Пользователь {target_id} добавлен в админы.")
+
+
+async def handle_remove_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    if await abort_if_banned(update, data):
+        return
+    user_id = update.effective_user.id
+    if not is_root_admin(user_id):
+        await update.effective_message.reply_text("Удалять админов может только корневой админ.")
+        return
+    if not context.args:
+        await update.effective_message.reply_text("Использование:\n<code>/remove_admin ID</code>")
+        return
+    try:
+        target_id = int(context.args[0])
+    except ValueError:
+        await update.effective_message.reply_text("ID должен быть числом.")
+        return
+
+    if target_id in ADMINS:
+        await update.effective_message.reply_text("Нельзя удалить корневого админа из CONFIG.")
+        return
+
+    admins_list = data.get("admins", [])
+    if target_id not in admins_list:
+        await update.effective_message.reply_text("Этот пользователь не является админом (или является root через CONFIG).")
+        return
+
+    admins_list = [a for a in admins_list if a != target_id]
+    data["admins"] = admins_list
+    save_data(data)
+    await update.effective_message.reply_text(f"Пользователь {target_id} убран из админов.")
 
 
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1417,7 +2011,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             "⚡ Профиль активирован!\n\n"
             f"Твой Telegram ID: <code>{user_id}</code>\n\n"
             "Теперь ты можешь:\n"
-            "• Добавлять друзей: /friend_invite &lt;ID&gt;\n"
+            "• Добавлять друзей через /friend_invite\n"
             "• Смотреть входящие заявки: /friend_requests\n"
             "• Список друзей: /friend_list\n\n"
             "Нажми кнопку ниже, чтобы открыть главное меню."
@@ -1428,8 +2022,38 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await query.edit_message_text(text, reply_markup=kb)
         return
 
+    if data_str == "verify_sub":
+        subscribed = await is_subscribed(context, user_id)
+        if subscribed:
+            user_data["activated"] = True
+            save_data(data)
+            kb = InlineKeyboardMarkup(
+                [[InlineKeyboardButton("📚 Открыть главное меню", callback_data="main_menu")]]
+            )
+            await query.edit_message_text(
+                "✅ Подписка подтверждена, профиль активирован.\n\n"
+                "Теперь можно пользоваться навигацией и сохранять прогресс.",
+                reply_markup=kb,
+            )
+        else:
+            await query.message.reply_text(
+                "Я пока не вижу подписку на канал.\n\n"
+                "Подпишись на AnimeHUB | Dream, подожди пару секунд и нажми кнопку ещё раз."
+            )
+        return
+
     if data_str == "main_menu":
         await show_main_menu(update, context, data)
+        return
+
+    if data_str == "suggest_info":
+        await query.message.reply_text(
+            "Хочешь предложить тайтл или идею для AnimeHUB | Dream?\n\n"
+            "Просто напиши:\n"
+            "<code>/suggest твой текст</code>\n\n"
+            "Сообщение улетит прямо админам.",
+            parse_mode=ParseMode.HTML,
+        )
         return
 
     if data_str.startswith("sec_"):
@@ -1457,15 +2081,6 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await handle_friend_list(update, context)
         return
 
-    if data_str.startswith("top150rat_page_"):
-        try:
-            page_index = int(data_str.split("_")[-1])
-        except ValueError:
-            page_index = 0
-        text, kb = build_top150_ratings_page(page_index)
-        await query.edit_message_text(text, reply_markup=kb)
-        return
-
     if data_str == "draft_publish":
         draft = context.user_data.get("draft_post")
         if not draft:
@@ -1489,6 +2104,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             posts[str(m.message_id)] = {
                 "title_id": draft.get("title_id"),
                 "created_at": int(time.time()),
+                "caption": draft.get("caption", ""),
             }
             data["posts"] = posts
             save_data(data)
@@ -1501,6 +2117,19 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if data_str == "draft_cancel":
         context.user_data.pop("draft_post", None)
         await query.edit_message_text("Черновик отменён.")
+        return
+
+    if data_str.startswith("top150_"):
+        try:
+            _, kind, _, page_str = data_str.split("_", 3)
+            page = int(page_str)
+        except ValueError:
+            return
+        if kind not in ("poster", "merged"):
+            return
+        text, page, total_pages = build_top150_page_text(kind, page)
+        kb = build_top150_page_keyboard(kind, page, total_pages)
+        await query.edit_message_text(text, reply_markup=kb)
         return
 
     if data_str.startswith("fav_add:") or data_str.startswith("fav_remove:"):
@@ -1533,7 +2162,7 @@ async def post_start_common(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     if await abort_if_banned(update, data):
         return ConversationHandler.END
     user_id = update.effective_user.id
-    if ADMINS and user_id not in ADMINS:
+    if not is_admin(data, user_id):
         await update.effective_message.reply_text("Эта команда только для админа.")
         return ConversationHandler.END
 
@@ -1548,7 +2177,7 @@ async def post_start_common(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
     await update.effective_message.reply_text(
         "Шаг 1/4.\nОтправь обложку/превьюшку как фото.\n\n"
-        "Если передумал — напиши /cancel."
+        "Если передумал — напиши <code>/cancel</code>."
     )
     return POST_PHOTO
 
@@ -1571,12 +2200,7 @@ async def post_get_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     await update.effective_message.reply_text(
         "Шаг 2/4.\nТеперь отправь текст карточки, который будет под обложкой.\n\n"
-        "Например:\n\n"
-        "Поднятие уровня в одиночку\n\n"
-        "Сезоны 1–2\n"
-        "━━━▰▰▰▰▰▰▰▰\n\n"
-        "4K Upscale\n"
-        "..."
+        "Можешь сразу вставить готовый текст из шаблона."
     )
     return POST_CAPTION
 
@@ -1586,8 +2210,8 @@ async def post_get_caption(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     context.user_data["post_caption"] = text
 
     await update.effective_message.reply_text(
-        "Шаг 3/4.\nВставь ссылку на описание (Telegraph), как на скрине.\n"
-        "Если описания пока нет — напиши просто -"
+        "Шаг 3/4.\nВставь ссылку на описание (Telegraph).\n"
+        "Если описания пока нет — напиши <code>-</code>."
     )
     return POST_DESC
 
@@ -1601,8 +2225,8 @@ async def post_get_desc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     await update.effective_message.reply_text(
         "Шаг 4/4.\nТеперь отправь ссылку, где смотреть аниме "
-        "(твой приватный канал/плейлист).\n"
-        "Если кнопка «Смотреть» не нужна — напиши -"
+        "(приватный канал/плейлист).\n"
+        "Если кнопка «Смотреть» не нужна — напиши <code>-</code>."
     )
     return POST_WATCH
 
@@ -1647,6 +2271,7 @@ async def post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             posts[str(m.message_id)] = {
                 "title_id": None,
                 "created_at": int(time.time()),
+                "caption": caption,
             }
             data["posts"] = posts
             save_data(data)
@@ -1724,20 +2349,18 @@ async def edit_post_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if await abort_if_banned(update, data):
         return ConversationHandler.END
     user_id = update.effective_user.id
-    if ADMINS and user_id not in ADMINS:
+    if not is_admin(data, user_id):
         await update.effective_message.reply_text("Эта команда только для админа.")
         return ConversationHandler.END
 
     if check_rate_limit(user_id, "edit_post", 3.0):
-        await update.effective_message.reply_text("Слишком часто используешь эту команду, попробуй позже.")
+        await update.effective_message.reply_text("Слишком часто используешь эту команду, попробуй чуть позже.")
         return ConversationHandler.END
 
     if not context.args:
         await update.effective_message.reply_text(
             "Использование:\n"
-            "/edit_post <ссылка на сообщение или ID>\n\n"
-            "Пример:\n"
-            "/edit_post https://t.me/AnimeHUB_Dream/16"
+            "<code>/edit_post https://t.me/AnimeHUB_Dream/16</code>"
         )
         return ConversationHandler.END
 
@@ -1751,9 +2374,9 @@ async def edit_post_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await update.effective_message.reply_text(
         f"Редактирование поста с ID <code>{msg_id}</code>.\n\n"
         "Шаг 1/4.\n"
-        "Отправь <b>новую обложку</b> как фото, если хочешь заменить картинку.\n"
+        "Отправь новую обложку как фото, если хочешь заменить картинку.\n"
         "Если обложку менять не нужно — напиши <code>-</code>.\n\n"
-        "Если что, /cancel отменит операцию."
+        "Если что, <code>/cancel</code> отменит операцию."
     )
     return EDIT_PHOTO
 
@@ -1774,8 +2397,7 @@ async def edit_post_get_photo(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     await update.effective_message.reply_text(
         "Шаг 2/4.\n"
-        "Отправь <b>новый текст подписи</b> для поста.\n\n"
-        "Можно вставить полностью ту же карточку, что и при создании."
+        "Отправь новый текст подписи для поста."
     )
     return EDIT_CAPTION
 
@@ -1786,8 +2408,8 @@ async def edit_post_get_caption(update: Update, context: ContextTypes.DEFAULT_TY
 
     await update.effective_message.reply_text(
         "Шаг 3/4.\n"
-        "Отправь ссылку на <b>описание (Telegraph)</b>.\n"
-        "Если описания не нужно или оно остаётся пустым — напиши <code>-</code>."
+        "Отправь ссылку на описание (Telegraph).\n"
+        "Если описания не нужно — напиши <code>-</code>."
     )
     return EDIT_DESC
 
@@ -1800,8 +2422,8 @@ async def edit_post_get_desc(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     await update.effective_message.reply_text(
         "Шаг 4/4.\n"
-        "Отправь ссылку, где <b>смотреть аниме</b> (кнопка «Смотреть»).\n"
-        "Если кнопка «Смотреть» не нужна — напиши <code>-</code>."
+        "Отправь ссылку, где смотреть аниме (кнопка «Смотреть»).\n"
+        "Если кнопка не нужна — напиши <code>-</code>."
     )
     return EDIT_WATCH
 
@@ -1861,6 +2483,15 @@ async def edit_post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE
                 context.user_data.pop(key, None)
             return ConversationHandler.END
 
+        # обновляем caption в базе постов
+        posts = data.get("posts", {})
+        info = posts.get(str(msg_id), {})
+        info.setdefault("title_id", None)
+        info.setdefault("created_at", int(time.time()))
+        info["caption"] = new_caption
+        posts[str(msg_id)] = info
+        data["posts"] = posts
+
         data["stats"]["posts_edited"] += 1
         save_data(data)
 
@@ -1878,14 +2509,14 @@ async def handle_link_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
-    if ADMINS and user_id not in ADMINS:
+    if not is_admin(data, user_id):
         await update.effective_message.reply_text("Эта команда только для админа.")
         return
 
     if len(context.args) < 2:
         await update.effective_message.reply_text(
-            "Использование:\n/link_post <ссылка или ID сообщения> <title_id>\n\n"
-            "Пример:\n/link_post https://t.me/AnimeHUB_Dream/16 solo_leveling"
+            "Использование:\n"
+            "<code>/link_post https://t.me/AnimeHUB_Dream/16 solo_leveling</code>"
         )
         return
 
@@ -1901,15 +2532,16 @@ async def handle_link_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     posts = data.get("posts", {})
-    posts[str(msg_id)] = {
-        "title_id": tid,
-        "created_at": int(time.time()),
-    }
+    info = posts.get(str(msg_id), {})
+    info["title_id"] = tid
+    info.setdefault("created_at", int(time.time()))
+    info.setdefault("caption", None)
+    posts[str(msg_id)] = info
     data["posts"] = posts
     save_data(data)
 
     await update.effective_message.reply_text(
-        f"Пост с ID {msg_id} привязан к тайтлу «{title['name']}»."
+        f"Пост с ID <code>{msg_id}</code> привязан к тайтлу «{title['name']}»."
     )
 
 
@@ -1918,14 +2550,14 @@ async def handle_repost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
-    if ADMINS and user_id not in ADMINS:
+    if not is_admin(data, user_id):
         await update.effective_message.reply_text("Эта команда только для админа.")
         return
 
     if not context.args:
         await update.effective_message.reply_text(
-            "Использование:\n/repost <ссылка или ID сообщения>\n\n"
-            "Пример:\n/repost https://t.me/AnimeHUB_Dream/16"
+            "Использование:\n"
+            "<code>/repost https://t.me/AnimeHUB_Dream/16</code>"
         )
         return
 
@@ -1965,6 +2597,7 @@ async def handle_repost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         posts[str(m.message_id)] = {
             "title_id": old_info.get("title_id"),
             "created_at": int(time.time()),
+            "caption": old_info.get("caption"),
         }
         data["stats"]["reposts"] += 1
         data["stats"]["posts_created"] += 1
@@ -2044,20 +2677,26 @@ def main() -> None:
     application.add_handler(CommandHandler("watched_add", handle_watched_add))
     application.add_handler(CommandHandler("watched_remove", handle_watched_remove))
     application.add_handler(CommandHandler("watched_list", handle_watched_list))
+    application.add_handler(CommandHandler("weekly", handle_weekly))
     application.add_handler(CommandHandler("stats", handle_stats))
     application.add_handler(CommandHandler("users", handle_users))
     application.add_handler(CommandHandler("title", handle_title))
+    application.add_handler(CommandHandler("search", handle_search))
     application.add_handler(CommandHandler("myid", handle_myid))
     application.add_handler(CommandHandler("friend_invite", handle_friend_invite))
+    application.add_handler(CommandHandler("invite_friend", handle_invite_friend))
     application.add_handler(CommandHandler("friend_requests", handle_friend_requests))
     application.add_handler(CommandHandler("friend_accept", handle_friend_accept))
     application.add_handler(CommandHandler("friend_list", handle_friend_list))
     application.add_handler(CommandHandler("friend_vs", handle_friend_vs))
+    application.add_handler(CommandHandler("suggest", handle_suggest))
     application.add_handler(CommandHandler("link_post", handle_link_post))
     application.add_handler(CommandHandler("repost", handle_repost))
     application.add_handler(CommandHandler("ban_user", handle_ban_user))
     application.add_handler(CommandHandler("unban_user", handle_unban_user))
-    application.add_handler(CommandHandler("top150_ratings", handle_top150_ratings_command))
+    application.add_handler(CommandHandler("admin_list", handle_admin_list))
+    application.add_handler(CommandHandler("add_admin", handle_add_admin))
+    application.add_handler(CommandHandler("remove_admin", handle_remove_admin))
     application.add_handler(CallbackQueryHandler(handle_buttons))
 
     application.run_polling()
