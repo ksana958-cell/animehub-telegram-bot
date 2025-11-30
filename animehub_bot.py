@@ -331,7 +331,7 @@ TOP150_MERGED_LIST = [
     "Hyouka — Хёка",
     "Oregairu (My Teen Romantic Comedy SNAFU) — Как и ожидалось, моя школьная романтическая жизнь не удалась",
     "Laid-Back Camp (Yuru Camp) — Лагерь на свежем воздухе",
-    "Violet Evergarden: The Movie — Вайолет Эвергарден: Фильм",
+    "Oshi no Ko — Ребёнок идола",
     "Cyberpunk: Edgerunners — Киберпанк: Бегущие по краю",
     "86 Eighty-Six — Восемьдесят шесть",
     "Parasyte: The Maxim — Паразит: Учение о жизни",
