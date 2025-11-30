@@ -559,7 +559,7 @@ async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "⚡ Профиль активирован!\n\n"
             f"Твой Telegram ID: <code>{user_id}</code>\n\n"
             "Теперь ты можешь:\n"
-            "• Добавлять друзей: /friend_invite &lt;ID&gt;\n"
+            "• Добавлять друзей через /friend_invite\n"
             "• Смотреть входящие заявки: /friend_requests\n"
             "• Список друзей: /friend_list\n\n"
             "Нажми кнопку ниже, чтобы открыть главное меню."
@@ -603,7 +603,7 @@ async def handle_code(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     if not context.args:
         await update.effective_message.reply_text(
-            "Введите код после команды, например:\n/code AHVIP2025"
+            "Введите код после команды, например:\n<code>/code AHVIP2025</code>"
         )
         return
     code = context.args[0].strip()
@@ -613,7 +613,7 @@ async def handle_code(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         return
     user_data["access"] = level
     save_data(data)
-    await update.effective_message.reply_text(f"✅ Код принят. Новый уровень доступа: {level}")
+    await update.effective_message.reply_text(f"✅ Код принят. Новый уровень доступа: <b>{level}</b>")
 
 
 async def handle_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -634,16 +634,16 @@ async def handle_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     users_count = len(data["users"])
     sections = data["stats"]["sections"]
     parts = [
-        f"👥 Пользователей в базе: {users_count}",
-        f"🎲 Случайный тайтл использован: {data['stats']['random_used']} раз",
-        f"▶ Постов создано через /post: {data['stats']['posts_created']}",
-        f"📝 Постов отредактировано через /edit_post: {data['stats']['posts_edited']}",
-        f"🧾 Черновиков через /post_draft: {data['stats']['drafts_created']}",
-        f"🔁 Репостов через /repost: {data['stats']['reposts']}",
-        "📊 Переходы по разделам:",
+        f"👥 Пользователей в базе: <b>{users_count}</b>",
+        f"🎲 Случайный тайтл использован: <b>{data['stats']['random_used']}</b> раз",
+        f"▶ Постов создано через /post: <b>{data['stats']['posts_created']}</b>",
+        f"📝 Постов отредактировано через /edit_post: <b>{data['stats']['posts_edited']}</b>",
+        f"🧾 Черновиков через /post_draft: <b>{data['stats']['drafts_created']}</b>",
+        f"🔁 Репостов через /repost: <b>{data['stats']['reposts']}</b>",
+        "\n📊 Переходы по разделам:",
     ]
     for k, v in sections.items():
-        parts.append(f"• {k}: {v}")
+        parts.append(f"• <b>{k}</b>: {v}")
     text = "\n".join(parts)
     await update.effective_message.reply_text(text)
 
@@ -665,7 +665,7 @@ async def handle_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await update.effective_message.reply_text("Пока нет ни одного активированного пользователя.")
         return
 
-    lines = [f"👥 Активированные пользователи: {total}"]
+    lines = [f"👥 Активированные пользователи: <b>{total}</b>"]
     for uid, u in activated_users:
         name = u.get("full_name") or f"Пользователь {uid}"
         lines.append(f"• <a href='tg://user?id={uid}'>{name}</a>")
@@ -691,11 +691,11 @@ async def handle_favorites(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
         return
 
-    lines = ["⭐ Твои избранные тайтлы:"]
+    lines = ["⭐ <b>Твои избранные тайтлы:</b>"]
     for fid in favs:
         t = next((t for t in TITLES if t["id"] == fid), None)
         if t:
-            lines.append(f"• <b>{t['name']}</b> — /title {t['id']}")
+            lines.append(f"• <b>{t['name']}</b> — <code>/title {t['id']}</code>")
         else:
             lines.append(f"• Неизвестный тайтл: {fid}")
     text = "\n".join(lines)
@@ -713,7 +713,7 @@ async def handle_watched_add(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     if not context.args:
         await update.effective_message.reply_text(
-            "Использование:\n/watched_add <id тайтла>\n\nНапример:\n/watched_add solo_leveling"
+            "Использование:\n<code>/watched_add solo_leveling</code>"
         )
         return
     tid = context.args[0].strip().lower()
@@ -733,12 +733,11 @@ async def handle_watched_add(update: Update, context: ContextTypes.DEFAULT_TYPE)
             )
         else:
             await update.effective_message.reply_text(
-                f"Этот тайтл уже отмечен как просмотренный в списке «150 лучших аниме»."
+                "Этот тайтл уже отмечен как просмотренный в списке «150 лучших аниме»."
             )
     else:
         await update.effective_message.reply_text(
-            "Этот тайтл сейчас не помечен как часть списка «150 лучших аниме».\n"
-            "Но ты всё равно можешь следить за прогрессом по постеру вручную."
+            "Этот тайтл сейчас не помечен как часть списка «150 лучших аниме»."
         )
 
 
@@ -753,7 +752,7 @@ async def handle_watched_remove(update: Update, context: ContextTypes.DEFAULT_TY
 
     if not context.args:
         await update.effective_message.reply_text(
-            "Использование:\n/watched_remove <id тайтла>\n\nНапример:\n/watched_remove solo_leveling"
+            "Использование:\n<code>/watched_remove solo_leveling</code>"
         )
         return
     tid = context.args[0].strip().lower()
@@ -781,22 +780,21 @@ async def handle_watched_list(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not watched:
         msg = "Ты пока не отметил ни одного тайтла из «150 лучших аниме»."
         if total_top150 > 0:
-            msg += "\n\nДобавь просмотренный тайтл командой:\n/watched_add <id>"
+            msg += "\n\nДобавь просмотренный тайтл командой:\n<code>/watched_add id</code>"
         await update.effective_message.reply_text(msg)
         return
 
-    lines = ["🏆 Твои просмотренные тайтлы из «150 лучших аниме»:"]
-
+    lines = ["🏆 <b>Твой прогресс по «150 лучшим аниме»:</b>"]
     for tid in watched:
         t = next((t for t in TITLES if t["id"] == tid), None)
         if t:
-            lines.append(f"• <b>{t['name']}</b> — /title {t['id']}")
+            lines.append(f"• <b>{t['name']}</b> — <code>/title {t['id']}</code>")
         else:
             lines.append(f"• Неизвестный тайтл: {tid}")
 
     if total_top150 > 0:
         percent = round(len(watched) / total_top150 * 100, 1)
-        lines.append(f"\nПрогресс: {len(watched)}/{total_top150} ({percent}%)")
+        lines.append(f"\nПрогресс: <b>{len(watched)}/{total_top150}</b> ({percent}%)")
 
     text = "\n".join(lines)
     await update.effective_message.reply_text(text)
@@ -806,62 +804,75 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     data = load_data()
     if await abort_if_banned(update, data):
         return
+
     user_id = update.effective_user.id
-    if is_admin(data, user_id):
+    is_admin_user = is_admin(data, user_id)
+
+    if is_admin_user:
         text = (
-            "🛠 <b>Команды для админа</b>\n\n"
-            "/start – запустить бота\n"
-            "/menu – открыть главное меню навигации\n"
-            "/help – показать это меню помощи\n"
-            "/title &lt;id&gt; – показать карточку тайтла\n"
-            "/code &lt;код&gt; – ввести код доступа\n"
-            "/profile – мой профиль\n"
-            "/favorites – список избранных тайтлов\n"
-            "/watched_add &lt;id&gt; – добавить тайтл в прогресс по 150\n"
-            "/watched_remove &lt;id&gt; – убрать тайтл из прогресса по 150\n"
-            "/watched_list – показать прогресс по 150\n"
-            "/myid – показать мой Telegram ID\n"
-            "/friend_invite &lt;ID&gt; – добавить друга\n"
-            "/friend_requests – входящие заявки в друзья\n"
-            "/friend_accept &lt;ID&gt; – принять заявку\n"
-            "/friend_list – список друзей\n"
-            "/friend_vs &lt;ID&gt; – сравнить прогресс с другом\n"
-            "/post – мастер создания поста в канал\n"
-            "/post_draft – создать черновик поста с подтверждением\n"
-            "/edit_post &lt;ссылка или ID&gt; – изменить уже опубликованный пост\n"
-            "/link_post &lt;ссылка/ID&gt; &lt;title_id&gt; – привязать пост к тайтлу\n"
-            "/repost &lt;ссылка или ID&gt; – пересоздать пост в канале\n"
-            "/stats – статистика использования бота\n"
-            "/users – список всех активированных пользователей\n"
-            "/ban_user &lt;ID&gt; – заблокировать пользователя в боте\n"
-            "/unban_user &lt;ID&gt; – разблокировать пользователя\n"
-            "/admin_list – список админов\n"
-            "/add_admin &lt;ID&gt; – добавить админа (только корневой)\n"
-            "/remove_admin &lt;ID&gt; – убрать админа (кроме корневых)\n\n"
-            "Основная навигация по аниме — через кнопки под сообщениями."
+            "🛠 <b>Помощь (режим админа)</b>\n\n"
+            "📌 <b>Основное</b>\n"
+            "• <code>/start</code> – запустить бота\n"
+            "• <code>/menu</code> – главное меню\n"
+            "• <code>/help</code> – это меню\n"
+            "• <code>/profile</code> – мой профиль\n"
+            "• <code>/myid</code> – мой Telegram ID\n"
+            "• <code>/title id</code> – карточка тайтла\n"
+            "• <code>/code код</code> – ввести код доступа\n\n"
+            "⭐ <b>Избранное и 150 лучших</b>\n"
+            "• <code>/favorites</code> – избранные тайтлы\n"
+            "• <code>/watched_add id</code> – добавить в «150 лучших»\n"
+            "• <code>/watched_remove id</code> – убрать из «150 лучших»\n"
+            "• <code>/watched_list</code> – мой прогресс 150\n\n"
+            "👥 <b>Друзья</b>\n"
+            "• <code>/friend_invite</code> – добавить друга\n"
+            "  ↳ по ответу на сообщение, @username, ссылке или ID\n"
+            "• <code>/friend_requests</code> – входящие заявки\n"
+            "• <code>/friend_accept ID</code> – принять заявку\n"
+            "• <code>/friend_list</code> – список друзей\n"
+            "• <code>/friend_vs ID</code> – сравнить прогресс\n\n"
+            "📨 <b>Посты и канал</b>\n"
+            "• <code>/post</code> – мастер поста в канал\n"
+            "• <code>/post_draft</code> – черновик с подтверждением\n"
+            "• <code>/edit_post ссылка/ID</code> – изменить пост\n"
+            "• <code>/link_post ссылка/ID title_id</code> – привязать к тайтлу\n"
+            "• <code>/repost ссылка/ID</code> – пересоздать пост в канале\n\n"
+            "🧩 <b>Управление ботом</b>\n"
+            "• <code>/stats</code> – статистика бота\n"
+            "• <code>/users</code> – активированные пользователи\n"
+            "• <code>/ban_user ID</code> – заблокировать в боте\n"
+            "• <code>/unban_user ID</code> – разблокировать в боте\n"
+            "• <code>/admin_list</code> – список админов\n"
+            "• <code>/add_admin ID</code> – добавить админа (root)\n"
+            "• <code>/remove_admin ID</code> – убрать админа (кроме root)\n\n"
+            "Навигация по аниме — через кнопки под сообщениями."
         )
     else:
         text = (
-            "📖 <b>Команды для пользователя</b>\n\n"
-            "/start – запустить бота и активировать профиль\n"
-            "/menu – открыть главное меню навигации\n"
-            "/help – показать это меню помощи\n"
-            "/title &lt;id&gt; – показать карточку тайтла\n"
-            "/code &lt;код&gt; – ввести код доступа (если он есть)\n"
-            "/profile – мой профиль в боте\n"
-            "/favorites – мои избранные тайтлы\n"
-            "/watched_add &lt;id&gt; – отметить тайтл как просмотренный из 150\n"
-            "/watched_remove &lt;id&gt; – убрать тайтл из прогресса по 150\n"
-            "/watched_list – показать мой прогресс по 150\n"
-            "/myid – показать мой Telegram ID\n"
-            "/friend_invite &lt;ID&gt; – отправить приглашение в друзья\n"
-            "/friend_requests – входящие заявки в друзья\n"
-            "/friend_accept &lt;ID&gt; – принять заявку\n"
-            "/friend_list – список друзей\n"
-            "/friend_vs &lt;ID&gt; – сравнить прогресс по аниме с другом\n\n"
-            "Основная навигация по аниме доступна через кнопки под сообщениями: "
-            "тайтлы, популярное, 150 лучших, полнометражки."
+            "📖 <b>Помощь по боту AnimeHUB | Dream</b>\n\n"
+            "📌 <b>Основное</b>\n"
+            "• <code>/start</code> – запустить бота\n"
+            "• <code>/menu</code> – главное меню\n"
+            "• <code>/help</code> – это меню\n"
+            "• <code>/profile</code> – мой профиль\n"
+            "• <code>/myid</code> – мой Telegram ID\n"
+            "• <code>/title id</code> – карточка тайтла\n"
+            "• <code>/code код</code> – ввести код доступа (если есть)\n\n"
+            "⭐ <b>Избранное и «150 лучших»</b>\n"
+            "• <code>/favorites</code> – мои избранные тайтлы\n"
+            "• <code>/watched_add id</code> – добавить тайтл в прогресс 150\n"
+            "• <code>/watched_remove id</code> – убрать тайтл из прогресса 150\n"
+            "• <code>/watched_list</code> – показать мой прогресс 150\n\n"
+            "👥 <b>Друзья</b>\n"
+            "• <code>/friend_invite</code> – добавить друга\n"
+            "  ↳ по ответу на сообщение, @username, ссылке или ID\n"
+            "• <code>/friend_requests</code> – входящие заявки в друзья\n"
+            "• <code>/friend_accept ID</code> – принять заявку\n"
+            "• <code>/friend_list</code> – список друзей\n"
+            "• <code>/friend_vs ID</code> – сравнить прогресс по аниме\n\n"
+            "Навигация по аниме — через кнопки под сообщениями: тайтлы, популярное, 150 лучших, полнометражки."
         )
+
     await update.effective_message.reply_text(text)
 
 
@@ -876,11 +887,8 @@ async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     if not context.args:
         await update.effective_message.reply_text(
-            "Использование:\n/title <id>\n\n"
-            "Примеры:\n"
-            "/title solo_leveling\n"
-            "/title death_note\n"
-            "/title made_in_abyss"
+            "Использование:\n"
+            "<code>/title solo_leveling</code>"
         )
         return
 
@@ -897,7 +905,7 @@ async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             f"Нужен уровень: <b>{required}</b>\n"
             f"Твой уровень сейчас: <b>{user_data.get('access', 'free')}</b>\n\n"
             "Если у тебя есть код доступа, введи его командой:\n"
-            "/code &lt;код&gt;"
+            "<code>/code код</code>"
         )
         return
 
@@ -912,11 +920,11 @@ async def handle_myid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     user_id = update.effective_user.id
     text = (
         f"Твой Telegram ID: <code>{user_id}</code>\n\n"
-        "Отправь его другу, чтобы он смог добавить тебя в друзья:\n"
-        "/friend_invite "
-        f"{user_id}"
+        "Отправь его другу, чтобы он смог добавить тебя в друзья через:\n"
+        "<code>/friend_invite ID</code>"
     )
     await update.effective_message.reply_text(text)
+
 
 async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = load_data()
@@ -941,12 +949,13 @@ async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYP
     if target_id is None:
         if not context.args:
             await update.effective_message.reply_text(
-                "Использование:\n"
-                "• Ответь на сообщение друга и набери: /friend_invite\n"
-                "• Или: /friend_invite @username\n"
-                "• Или: /friend_invite ссылка_на_профиль (например, https://t.me/username)\n"
-                "• Или: /friend_invite <ID друга>\n\n"
-                "ID друг может узнать командой /myid у себя."
+                "Как добавить друга:\n\n"
+                "• Ответь на его сообщение и напиши: <code>/friend_invite</code>\n"
+                "• Или: <code>/friend_invite @username</code>\n"
+                "• Или: <code>/friend_invite ссылка_на_профиль</code>\n"
+                "  (например, <code>https://t.me/username</code>)\n"
+                "• Или: <code>/friend_invite ID</code>\n\n"
+                "ID друг может узнать командой <code>/myid</code> у себя."
             )
             return
 
@@ -970,10 +979,10 @@ async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYP
                 target_id = chat.id
             except Exception:
                 await update.effective_message.reply_text(
-                    "Не удалось найти пользователя по этому username/ссылке.\n"
+                    "Не удалось найти пользователя по этому username/ссылке.\n\n"
                     "Убедись, что:\n"
-                    "• друг уже написал что-то боту\n"
-                    "• указан корректный @username или ссылка вида https://t.me/username"
+                    "• друг уже писал этому боту\n"
+                    "• указан корректный @username или ссылка вида <code>https://t.me/username</code>"
                 )
                 return
 
@@ -1003,7 +1012,7 @@ async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYP
 
     await update.effective_message.reply_text(
         "✅ Приглашение в друзья отправлено.\n"
-        "Скажи другу запустить бота и набрать /friend_requests, чтобы принять."
+        "Скажи другу запустить бота и набрать <code>/friend_requests</code>, чтобы принять."
     )
 
     try:
@@ -1013,11 +1022,13 @@ async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYP
                 "🤝 Тебе пришло приглашение в друзья!\n\n"
                 f"От пользователя: <a href='tg://user?id={from_id}'>{from_id}</a>\n\n"
                 "Чтобы посмотреть и принять приглашение, набери команду:\n"
-                "/friend_requests"
+                "<code>/friend_requests</code>"
             ),
+            parse_mode=ParseMode.HTML,
         )
     except Exception:
         pass
+
 
 async def handle_friend_requests(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = load_data()
@@ -1030,11 +1041,10 @@ async def handle_friend_requests(update: Update, context: ContextTypes.DEFAULT_T
         await update.effective_message.reply_text("У тебя нет входящих приглашений в друзья.")
         return
 
-    lines = ["📨 Входящие приглашения в друзья:"]
+    lines = ["📨 <b>Входящие приглашения в друзья:</b>"]
     for rid in reqs:
         lines.append(
-            f"• <a href='tg://user?id={rid}'>Пользователь {rid}</a> — принять: "
-            f"/friend_accept {rid}"
+            f"• <a href='tg://user?id={rid}'>Пользователь {rid}</a> — принять: <code>/friend_accept {rid}</code>"
         )
     text = "\n".join(lines)
     await update.effective_message.reply_text(text)
@@ -1049,8 +1059,8 @@ async def handle_friend_accept(update: Update, context: ContextTypes.DEFAULT_TYP
 
     if not context.args:
         await update.effective_message.reply_text(
-            "Использование:\n/friend_accept <ID>\n\n"
-            "Посмотри список входящих заявок: /friend_requests"
+            "Использование:\n<code>/friend_accept ID</code>\n\n"
+            "Посмотри список входящих заявок: <code>/friend_requests</code>"
         )
         return
     try:
@@ -1086,8 +1096,7 @@ async def handle_friend_accept(update: Update, context: ContextTypes.DEFAULT_TYP
 
     await update.effective_message.reply_text(
         f"✅ Пользователь {other_id} добавлен в друзья.\n"
-        "Теперь вы можете сравнивать прогресс по аниме: /friend_vs "
-        f"{other_id}"
+        f"Теперь вы можете сравнивать прогресс по аниме: <code>/friend_vs {other_id}</code>"
     )
 
 
@@ -1104,16 +1113,16 @@ async def handle_friend_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not friends:
         await update.effective_message.reply_text(
             "У тебя пока нет друзей в боте.\n"
-            "Отправь свой ID (/myid) другу и пусть он добавит тебя через /friend_invite."
+            "Отправь свой ID (<code>/myid</code>) другу и пусть он добавит тебя через <code>/friend_invite</code>."
         )
         return
 
-    lines = ["🤝 Твой список друзей:"]
+    lines = ["🤝 <b>Твой список друзей:</b>"]
     for fid in friends:
         fdata = get_user(data, int(fid))
         name = fdata.get("full_name") or f"Пользователь {fid}"
         lines.append(f"• <a href='tg://user?id={fid}'>{name}</a>")
-    lines.append("\nЧтобы сравнить прогресс, используй:\n/friend_vs <ID друга>")
+    lines.append("\nЧтобы сравнить прогресс, используй:\n<code>/friend_vs ID_друга</code>")
     text = "\n".join(lines)
     await update.effective_message.reply_text(text)
 
@@ -1125,8 +1134,8 @@ async def handle_friend_vs(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     user_id = update.effective_user.id
     if not context.args:
         await update.effective_message.reply_text(
-            "Использование:\n/friend_vs <ID друга>\n\n"
-            "Сначала посмотри список друзей: /friend_list"
+            "Использование:\n<code>/friend_vs ID_друга</code>\n\n"
+            "Сначала посмотри список друзей: <code>/friend_list</code>"
         )
         return
     try:
@@ -1154,27 +1163,27 @@ async def handle_friend_vs(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     o_150 = len(other_data.get("watched_150", []))
 
     if u_fav > o_fav:
-        fav_result = "По количеству тайтлов (избранное) побеждаешь ты."
+        fav_result = "По количеству тайтлов в избранном побеждаешь <b>ты</b>."
     elif u_fav < o_fav:
-        fav_result = "По количеству тайтлов (избранное) пока лидирует твой друг."
+        fav_result = "По количеству тайтлов в избранном пока лидирует <b>твой друг</b>."
     else:
-        fav_result = "По количеству тайтлов в избранном у вас ничья."
+        fav_result = "По избранному у вас <b>ничья</b>."
 
     if u_150 > o_150:
-        top_result = "По «150 лучшим аниме» побеждаешь ты."
+        top_result = "По «150 лучшим аниме» побеждаешь <b>ты</b>."
     elif u_150 < o_150:
-        top_result = "По «150 лучшим аниме» пока лидирует твой друг."
+        top_result = "По «150 лучшим аниме» пока лидирует <b>твой друг</b>."
     else:
-        top_result = "По «150 лучшим аниме» у вас ничья."
+        top_result = "По «150 лучшим аниме» у вас <b>ничья</b>."
 
     text = (
-        "⚔ Сравнение аниме-прогресса\n\n"
+        "⚔ <b>Сравнение аниме-прогресса</b>\n\n"
         f"Ты:\n"
-        f"• Избранных тайтлов: {u_fav}\n"
-        f"• Из «150 лучших аниме»: {u_150}\n\n"
+        f"• Избранных тайтлов: <b>{u_fav}</b>\n"
+        f"• Из «150 лучших аниме»: <b>{u_150}</b>\n\n"
         f"Друг ({other_id}):\n"
-        f"• Избранных тайтлов: {o_fav}\n"
-        f"• Из «150 лучших аниме»: {o_150}\n\n"
+        f"• Избранных тайтлов: <b>{o_fav}</b>\n"
+        f"• Из «150 лучших аниме»: <b>{o_150}</b>\n\n"
         f"{fav_result}\n"
         f"{top_result}"
     )
@@ -1200,7 +1209,7 @@ async def handle_ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await update.effective_message.reply_text("Эта команда только для админа.")
         return
     if not context.args:
-        await update.effective_message.reply_text("Использование:\n/ban_user <ID>")
+        await update.effective_message.reply_text("Использование:\n<code>/ban_user ID</code>")
         return
     try:
         target_id = int(context.args[0])
@@ -1222,7 +1231,7 @@ async def handle_unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await update.effective_message.reply_text("Эта команда только для админа.")
         return
     if not context.args:
-        await update.effective_message.reply_text("Использование:\n/unban_user <ID>")
+        await update.effective_message.reply_text("Использование:\n<code>/unban_user ID</code>")
         return
     try:
         target_id = int(context.args[0])
@@ -1253,7 +1262,7 @@ async def handle_admin_list(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     base_admins = set(ADMINS)
     all_admins = sorted(admins_file | base_admins)
 
-    lines = ["🔐 Список админов:"]
+    lines = ["🔐 <b>Список админов:</b>"]
     for aid in all_admins:
         mark = " (root)" if aid in base_admins else ""
         lines.append(f"• <a href='tg://user?id={aid}'>{aid}</a>{mark}")
@@ -1270,7 +1279,7 @@ async def handle_add_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await update.effective_message.reply_text("Добавлять админов может только корневой админ.")
         return
     if not context.args:
-        await update.effective_message.reply_text("Использование:\n/add_admin <ID>")
+        await update.effective_message.reply_text("Использование:\n<code>/add_admin ID</code>")
         return
     try:
         target_id = int(context.args[0])
@@ -1298,7 +1307,7 @@ async def handle_remove_admin(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.effective_message.reply_text("Удалять админов может только корневой админ.")
         return
     if not context.args:
-        await update.effective_message.reply_text("Использование:\n/remove_admin <ID>")
+        await update.effective_message.reply_text("Использование:\n<code>/remove_admin ID</code>")
         return
     try:
         target_id = int(context.args[0])
@@ -1312,7 +1321,7 @@ async def handle_remove_admin(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     admins_list = data.get("admins", [])
     if target_id not in admins_list:
-        await update.effective_message.reply_text("Этот пользователь не является админом (или только root через CONFIG).")
+        await update.effective_message.reply_text("Этот пользователь не является админом (или является root через CONFIG).")
         return
 
     admins_list = [a for a in admins_list if a != target_id]
@@ -1342,7 +1351,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             "⚡ Профиль активирован!\n\n"
             f"Твой Telegram ID: <code>{user_id}</code>\n\n"
             "Теперь ты можешь:\n"
-            "• Добавлять друзей: /friend_invite &lt;ID&gt;\n"
+            "• Добавлять друзей через /friend_invite\n"
             "• Смотреть входящие заявки: /friend_requests\n"
             "• Список друзей: /friend_list\n\n"
             "Нажми кнопку ниже, чтобы открыть главное меню."
@@ -1464,7 +1473,7 @@ async def post_start_common(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
     await update.effective_message.reply_text(
         "Шаг 1/4.\nОтправь обложку/превьюшку как фото.\n\n"
-        "Если передумал — напиши /cancel."
+        "Если передумал — напиши <code>/cancel</code>."
     )
     return POST_PHOTO
 
@@ -1487,12 +1496,7 @@ async def post_get_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     await update.effective_message.reply_text(
         "Шаг 2/4.\nТеперь отправь текст карточки, который будет под обложкой.\n\n"
-        "Например:\n\n"
-        "Поднятие уровня в одиночку\n\n"
-        "Сезоны 1–2\n"
-        "━━━▰▰▰▰▰▰▰▰\n\n"
-        "4K Upscale\n"
-        "..."
+        "Можешь сразу вставить готовый текст из шаблона."
     )
     return POST_CAPTION
 
@@ -1502,8 +1506,8 @@ async def post_get_caption(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     context.user_data["post_caption"] = text
 
     await update.effective_message.reply_text(
-        "Шаг 3/4.\nВставь ссылку на описание (Telegraph), как на скрине.\n"
-        "Если описания пока нет — напиши просто -"
+        "Шаг 3/4.\nВставь ссылку на описание (Telegraph).\n"
+        "Если описания пока нет — напиши <code>-</code>."
     )
     return POST_DESC
 
@@ -1517,8 +1521,8 @@ async def post_get_desc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     await update.effective_message.reply_text(
         "Шаг 4/4.\nТеперь отправь ссылку, где смотреть аниме "
-        "(твой приватный канал/плейлист).\n"
-        "Если кнопка «Смотреть» не нужна — напиши -"
+        "(приватный канал/плейлист).\n"
+        "Если кнопка «Смотреть» не нужна — напиши <code>-</code>."
     )
     return POST_WATCH
 
@@ -1645,15 +1649,13 @@ async def edit_post_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return ConversationHandler.END
 
     if check_rate_limit(user_id, "edit_post", 3.0):
-        await update.effective_message.reply_text("Слишком часто используешь эту команду, попробуй позже.")
+        await update.effective_message.reply_text("Слишком часто используешь эту команду, попробуй чуть позже.")
         return ConversationHandler.END
 
     if not context.args:
         await update.effective_message.reply_text(
             "Использование:\n"
-            "/edit_post <ссылка на сообщение или ID>\n\n"
-            "Пример:\n"
-            "/edit_post https://t.me/AnimeHUB_Dream/16"
+            "<code>/edit_post https://t.me/AnimeHUB_Dream/16</code>"
         )
         return ConversationHandler.END
 
@@ -1667,9 +1669,9 @@ async def edit_post_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await update.effective_message.reply_text(
         f"Редактирование поста с ID <code>{msg_id}</code>.\n\n"
         "Шаг 1/4.\n"
-        "Отправь <b>новую обложку</b> как фото, если хочешь заменить картинку.\n"
+        "Отправь новую обложку как фото, если хочешь заменить картинку.\n"
         "Если обложку менять не нужно — напиши <code>-</code>.\n\n"
-        "Если что, /cancel отменит операцию."
+        "Если что, <code>/cancel</code> отменит операцию."
     )
     return EDIT_PHOTO
 
@@ -1690,8 +1692,7 @@ async def edit_post_get_photo(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     await update.effective_message.reply_text(
         "Шаг 2/4.\n"
-        "Отправь <b>новый текст подписи</b> для поста.\n\n"
-        "Можно вставить полностью ту же карточку, что и при создании."
+        "Отправь новый текст подписи для поста."
     )
     return EDIT_CAPTION
 
@@ -1702,8 +1703,8 @@ async def edit_post_get_caption(update: Update, context: ContextTypes.DEFAULT_TY
 
     await update.effective_message.reply_text(
         "Шаг 3/4.\n"
-        "Отправь ссылку на <b>описание (Telegraph)</b>.\n"
-        "Если описания не нужно или оно остаётся пустым — напиши <code>-</code>."
+        "Отправь ссылку на описание (Telegraph).\n"
+        "Если описания не нужно — напиши <code>-</code>."
     )
     return EDIT_DESC
 
@@ -1716,8 +1717,8 @@ async def edit_post_get_desc(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     await update.effective_message.reply_text(
         "Шаг 4/4.\n"
-        "Отправь ссылку, где <b>смотреть аниме</b> (кнопка «Смотреть»).\n"
-        "Если кнопка «Смотреть» не нужна — напиши <code>-</code>."
+        "Отправь ссылку, где смотреть аниме (кнопка «Смотреть»).\n"
+        "Если кнопка не нужна — напиши <code>-</code>."
     )
     return EDIT_WATCH
 
@@ -1800,8 +1801,8 @@ async def handle_link_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     if len(context.args) < 2:
         await update.effective_message.reply_text(
-            "Использование:\n/link_post <ссылка или ID сообщения> <title_id>\n\n"
-            "Пример:\n/link_post https://t.me/AnimeHUB_Dream/16 solo_leveling"
+            "Использование:\n"
+            "<code>/link_post https://t.me/AnimeHUB_Dream/16 solo_leveling</code>"
         )
         return
 
@@ -1825,7 +1826,7 @@ async def handle_link_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     save_data(data)
 
     await update.effective_message.reply_text(
-        f"Пост с ID {msg_id} привязан к тайтлу «{title['name']}»."
+        f"Пост с ID <code>{msg_id}</code> привязан к тайтлу «{title['name']}»."
     )
 
 
@@ -1840,8 +1841,8 @@ async def handle_repost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     if not context.args:
         await update.effective_message.reply_text(
-            "Использование:\n/repost <ссылка или ID сообщения>\n\n"
-            "Пример:\n/repost https://t.me/AnimeHUB_Dream/16"
+            "Использование:\n"
+            "<code>/repost https://t.me/AnimeHUB_Dream/16</code>"
         )
         return
 
