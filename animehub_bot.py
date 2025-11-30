@@ -19,6 +19,7 @@ import json
 import os
 import random
 import time
+from datetime import time as dtime
 
 CONFIG = {
     "BOT_TOKEN": "8595192008:AAFUokx5z42w-lMmlxVqrzW43tpu0U1mOGA",
@@ -77,6 +78,8 @@ TITLES = [
         ),
         "top150": True,
         "min_access": "free",
+        "hot": True,
+        "added_at": int(time.time()),
     },
 ]
 
@@ -89,9 +92,8 @@ SECTION_TEXTS = {
     ),
     "hot_now": (
         "🔥 Раздел «Популярно сейчас»\n\n"
-        "Текущие самые просматриваемые и обсуждаемые тайтлы на канале.\n"
-        "Здесь могут появляться новые релизы и рекомендации на основе активности.\n\n"
-        "Следи за обновлениями в AnimeHUB | Dream."
+        "Здесь появляются тайтлы, которые сейчас в фокусе: новинки, топовые релизы,\n"
+        "то, что чаще всего открывают и добавляют в избранное на AnimeHUB | Dream.\n"
     ),
     "top150": (
         "🏆 Раздел «150 лучших аниме»\n\n"
@@ -130,6 +132,7 @@ def default_data():
         "posts": {},
         "banned": {},
         "admins": ADMINS[:],
+        "invites": {},
     }
 
 
@@ -168,6 +171,8 @@ def load_data():
         data["version"] = 1
     if "admins" not in data:
         data["admins"] = ADMINS[:]
+    if "invites" not in data:
+        data["invites"] = {}
     return data
 
 
@@ -190,6 +195,7 @@ def get_user(data, user_id):
             "created_at": int(time.time()),
             "username": None,
             "full_name": None,
+            "weekly_150_start": 0,
         }
     else:
         u = data["users"][uid]
@@ -209,6 +215,8 @@ def get_user(data, user_id):
             u["username"] = None
         if "full_name" not in u:
             u["full_name"] = None
+        if "weekly_150_start" not in u:
+            u["weekly_150_start"] = len(u.get("watched_150", []))
 
     user = data["users"][uid]
     return user
@@ -285,6 +293,7 @@ def build_main_menu_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton("🎬 Полнометражки", callback_data="sec_movies")],
         [InlineKeyboardButton("🎲 Случайный тайтл", callback_data="rand_title")],
         [InlineKeyboardButton("👤 Мой профиль", callback_data="my_profile")],
+        [InlineKeyboardButton("📩 Предложить тайтл", callback_data="suggest_info")],
         [
             InlineKeyboardButton(
                 "🏠 Открыть канал",
@@ -384,6 +393,18 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, dat
         await update.callback_query.edit_message_text(text, reply_markup=reply_markup)
 
 
+async def render_hot_now(data, user_data):
+    hot_titles = [t for t in TITLES if t.get("hot")]
+    hot_titles.sort(key=lambda t: t.get("added_at", 0), reverse=True)
+    if not hot_titles:
+        return SECTION_TEXTS["hot_now"] + "\n\nСписок тайтлов скоро появится."
+    lines = [SECTION_TEXTS["hot_now"].rstrip(), ""]
+    lines.append("🔥 <b>Сейчас в фокусе:</b>")
+    for t in hot_titles[:10]:
+        lines.append(f"• <b>{t['name']}</b> — <code>/title {t['id']}</code>")
+    return "\n".join(lines)
+
+
 async def send_section(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
@@ -442,7 +463,10 @@ async def send_section(
                 await update.effective_message.reply_text(text, reply_markup=kb)
             return
 
-    text = SECTION_TEXTS.get(section_key, "Раздел временно недоступен.")
+    if section_key == "hot_now":
+        text = await render_hot_now(data, user_data)
+    else:
+        text = SECTION_TEXTS.get(section_key, "Раздел временно недоступен.")
     kb = build_section_keyboard(section_key)
     if from_callback:
         await update.callback_query.edit_message_text(text, reply_markup=kb)
@@ -541,6 +565,12 @@ async def show_profile(
         await update.effective_message.reply_text(text, reply_markup=kb)
 
 
+def ensure_friend_access(user_data):
+    current = user_data.get("access", "free")
+    if ACCESS_LEVELS.get("friend", 1) > ACCESS_LEVELS.get(current, 0):
+        user_data["access"] = "friend"
+
+
 async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = load_data()
     if await abort_if_banned(update, data):
@@ -552,32 +582,75 @@ async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     save_data(data)
 
     args = context.args
-    if args and args[0].strip().lower() == "activate":
-        user_data["activated"] = True
-        save_data(data)
-        text = (
-            "⚡ Профиль активирован!\n\n"
-            f"Твой Telegram ID: <code>{user_id}</code>\n\n"
-            "Теперь ты можешь:\n"
-            "• Добавлять друзей через /friend_invite\n"
-            "• Смотреть входящие заявки: /friend_requests\n"
-            "• Список друзей: /friend_list\n\n"
-            "Нажми кнопку ниже, чтобы открыть главное меню."
-        )
-        kb = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("📚 Открыть главное меню", callback_data="main_menu")]]
-        )
-        await update.effective_message.reply_text(text, reply_markup=kb)
-        return
+
+    if args:
+        arg0 = args[0].strip()
+        if arg0.lower() == "activate":
+            user_data["activated"] = True
+            save_data(data)
+            text = (
+                "⚡ Профиль активирован!\n\n"
+                f"Твой Telegram ID: <code>{user_id}</code>\n\n"
+                "Теперь ты можешь:\n"
+                "• Добавлять друзей через /friend_invite\n"
+                "• Смотреть входящие заявки: /friend_requests\n"
+                "• Список друзей: /friend_list\n\n"
+                "Нажми кнопку ниже, чтобы открыть главное меню."
+            )
+            kb = InlineKeyboardMarkup(
+                [[InlineKeyboardButton("📚 Открыть главное меню", callback_data="main_menu")]]
+            )
+            await update.effective_message.reply_text(text, reply_markup=kb)
+            return
+
+        if arg0.startswith("friend_"):
+            token = arg0
+            invites = data.get("invites", {})
+            info = invites.get(token)
+            if info and info.get("type") == "friend":
+                ensure_friend_access(user_data)
+                user_data["activated"] = True
+                info["uses"] = info.get("uses", 0) + 1
+                max_uses = info.get("max_uses")
+                if max_uses is not None and info["uses"] >= max_uses:
+                    invites.pop(token, None)
+                data["invites"] = invites
+                save_data(data)
+                text = (
+                    "🤝 Ты вошёл по приглашению друга.\n\n"
+                    "Профиль активирован, уровень доступа: <b>friend</b>.\n\n"
+                    "Открывай главное меню и выбирай тайтлы."
+                )
+                kb = InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("📚 Открыть главное меню", callback_data="main_menu")]]
+                )
+                await update.effective_message.reply_text(text, reply_markup=kb)
+                return
 
     if not user_data.get("activated", False):
+        subscribed = await is_subscribed(context, user_id)
+        if subscribed:
+            user_data["activated"] = True
+            save_data(data)
+            await show_main_menu(update, context, data)
+            return
+
         text = (
             "⚡ Перед началом нужно активировать профиль.\n\n"
-            "Это свяжет твой Telegram-аккаунт с прогрессом в AnimeHUB | Dream.\n\n"
-            "Нажми кнопку ниже, чтобы активировать профиль."
+            "1) Подпишись на канал AnimeHUB | Dream.\n"
+            "2) Нажми кнопку «Я подписан ✅» — я проверю подписку и активирую профиль.\n\n"
+            "Без активации прогресс и избранное не будут сохраняться."
         )
         kb = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("⚡ Активировать профиль", callback_data="activate_profile")]]
+            [
+                [
+                    InlineKeyboardButton(
+                        "🏠 Открыть канал",
+                        url=f"https://t.me/{CHANNEL_USERNAME.lstrip('@')}",
+                    )
+                ],
+                [InlineKeyboardButton("✅ Я подписан", callback_data="verify_sub")],
+            ]
         )
         await update.effective_message.reply_text(text, reply_markup=kb)
         return
@@ -654,7 +727,7 @@ async def handle_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
     user_id = update.effective_user.id
     if not is_admin(data, user_id):
-        await update.effective_message.reply_text("Эта команда только для администратора.")
+        await update.effective_message.reply_text("Эта команда доступна только для администратора.")
         return
 
     users = data.get("users", {})
@@ -803,6 +876,60 @@ async def handle_watched_list(update: Update, context: ContextTypes.DEFAULT_TYPE
     await update.effective_message.reply_text(text)
 
 
+def weekly_rank(diff):
+    if diff <= 0:
+        return "Спящий наблюдатель", 1
+    if diff == 1:
+        return "Новичок", 2
+    if 2 <= diff <= 3:
+        return "Охотник", 5
+    if 4 <= diff <= 6:
+        return "Герой", 8
+    if 7 <= diff <= 10:
+        return "Легенда", 0
+    return "Легенда", 0
+
+
+async def handle_weekly(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    if await abort_if_banned(update, data):
+        return
+    user_id = update.effective_user.id
+    tg_user = update.effective_user
+    user = get_user(data, user_id)
+    update_user_names(data, user_id, tg_user)
+
+    total = len(user.get("watched_150", []))
+    base = user.get("weekly_150_start", total)
+    diff = total - base
+    rank, next_target = weekly_rank(diff)
+
+    if diff <= 0:
+        msg = (
+            "🏆 Еженедельный прогресс по «150 лучшим аниме»\n\n"
+            "За эту неделю ты не добавил новых тайтлов в список 150.\n"
+            f"Текущий ранг: <b>{rank}</b>.\n\n"
+            "Добавь хотя бы один тайтл и попробуй ещё раз позже."
+        )
+    else:
+        if next_target > 0 and next_target > diff:
+            need = next_target - diff
+            msg_next = f"До следующего уровня осталось всего <b>{need}</b> тайтл(ов)."
+        else:
+            msg_next = "Ты на максимальном уровне этой недели. Жёстко."
+        msg = (
+            "🏆 Еженедельный прогресс по «150 лучшим аниме»\n\n"
+            f"За эту неделю ты посмотрел и отметил <b>{diff}</b> новых тайтл(ов) из постера 150.\n"
+            f"Текущий ранг: <b>{rank}</b>.\n\n"
+            f"{msg_next}\n\n"
+            f"Всего в прогрессе 150 сейчас: <b>{total}</b>."
+        )
+
+    user["weekly_150_start"] = total
+    save_data(data)
+    await update.effective_message.reply_text(msg)
+
+
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = load_data()
     if await abort_if_banned(update, data):
@@ -821,7 +948,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "• <code>/profile</code> – мой профиль\n"
             "• <code>/myid</code> – мой Telegram ID\n"
             "• <code>/title id</code> – карточка тайтла\n"
-            "• <code>/code код</code> – ввести код доступа\n\n"
+            "• <code>/search текст</code> – поиск тайтла по названию\n"
+            "• <code>/code код</code> – ввести код доступа\n"
+            "• <code>/weekly</code> – недельный прогресс по 150\n\n"
             "⭐ <b>Избранное и 150 лучших</b>\n"
             "• <code>/favorites</code> – избранные тайтлы\n"
             "• <code>/watched_add id</code> – добавить в «150 лучших»\n"
@@ -830,10 +959,13 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "👥 <b>Друзья</b>\n"
             "• <code>/friend_invite</code> – добавить друга\n"
             "  ↳ по ответу на сообщение, @username, ссылке или ID\n"
+            "• <code>/invite_friend</code> – выдать приглашение уровня friend\n"
             "• <code>/friend_requests</code> – входящие заявки\n"
             "• <code>/friend_accept ID</code> – принять заявку\n"
             "• <code>/friend_list</code> – список друзей\n"
             "• <code>/friend_vs ID</code> – сравнить прогресс\n\n"
+            "📨 <b>Обратная связь</b>\n"
+            "• <code>/suggest текст</code> – отправить предложение/фидбек админам\n\n"
             "📨 <b>Посты и канал</b>\n"
             "• <code>/post</code> – мастер поста в канал\n"
             "• <code>/post_draft</code> – черновик с подтверждением\n"
@@ -860,7 +992,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "• <code>/profile</code> – мой профиль\n"
             "• <code>/myid</code> – мой Telegram ID\n"
             "• <code>/title id</code> – карточка тайтла\n"
-            "• <code>/code код</code> – ввести код доступа (если есть)\n\n"
+            "• <code>/search текст</code> – поиск тайтла по названию\n"
+            "• <code>/code код</code> – ввести код доступа (если есть)\n"
+            "• <code>/weekly</code> – мой недельный прогресс по 150\n\n"
             "⭐ <b>Избранное и «150 лучших»</b>\n"
             "• <code>/favorites</code> – мои избранные тайтлы\n"
             "• <code>/watched_add id</code> – добавить тайтл в прогресс 150\n"
@@ -869,10 +1003,13 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "👥 <b>Друзья</b>\n"
             "• <code>/friend_invite</code> – добавить друга\n"
             "  ↳ по ответу на сообщение, @username, ссылке или ID\n"
+            "• <code>/invite_friend</code> – выдать другу ссылку-приглашение (уровень friend)\n"
             "• <code>/friend_requests</code> – входящие заявки в друзья\n"
             "• <code>/friend_accept ID</code> – принять заявку\n"
             "• <code>/friend_list</code> – список друзей\n"
             "• <code>/friend_vs ID</code> – сравнить прогресс по аниме\n\n"
+            "📨 <b>Обратная связь</b>\n"
+            "• <code>/suggest текст</code> – предложить тайтл или идею для канала\n\n"
             "Навигация по аниме — через кнопки под сообщениями: тайтлы, популярное, 150 лучших, полнометражки."
         )
 
@@ -914,6 +1051,41 @@ async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     card = build_premium_card(title)
     await update.effective_message.reply_text(card)
+
+
+async def handle_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    if await abort_if_banned(update, data):
+        return
+
+    if not context.args:
+        await update.effective_message.reply_text(
+            "Использование:\n<code>/search поднятие уровня</code>"
+        )
+        return
+
+    query = " ".join(context.args).strip().lower()
+    results = []
+    for t in TITLES:
+        name = t.get("name", "").lower()
+        tid = t.get("id", "").lower()
+        if query in name or query in tid:
+            results.append(t)
+
+    if not results:
+        await update.effective_message.reply_text("Ничего не найдено по этому запросу.")
+        return
+
+    if len(results) == 1:
+        t = results[0]
+        card = build_premium_card(t)
+        await update.effective_message.reply_text(card)
+        return
+
+    lines = ["🔎 <b>Найденные тайтлы:</b>"]
+    for t in results[:20]:
+        lines.append(f"• <b>{t['name']}</b> — <code>/title {t['id']}</code>")
+    await update.effective_message.reply_text("\n".join(lines))
 
 
 async def handle_myid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1031,6 +1203,52 @@ async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYP
         )
     except Exception:
         pass
+
+
+async def handle_invite_friend(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    if await abort_if_banned(update, data):
+        return
+
+    from_id = update.effective_user.id
+    user = get_user(data, from_id)
+    if not user.get("activated"):
+        await update.effective_message.reply_text(
+            "Сначала активируй профиль через /start, а потом создавай приглашения."
+        )
+        return
+
+    if check_rate_limit(from_id, "invite_friend", 5.0):
+        await update.effective_message.reply_text("Слишком часто создаёшь приглашения, попробуй чуть позже.")
+        return
+
+    invites = data.get("invites", {})
+    while True:
+        token_suffix = "".join(random.choices("abcdefghijklmnopqrstuvwxyz0123456789", k=8))
+        token = f"friend_{token_suffix}"
+        if token not in invites:
+            break
+
+    invites[token] = {
+        "type": "friend",
+        "created_by": from_id,
+        "created_at": int(time.time()),
+        "uses": 0,
+        "max_uses": 5,
+    }
+    data["invites"] = invites
+    save_data(data)
+
+    bot_username = context.bot.username
+    link = f"https://t.me/{bot_username}?start={token}"
+
+    await update.effective_message.reply_text(
+        "🎁 Приглашение уровня <b>friend</b> создано.\n\n"
+        "Отправь эту ссылку другу. Когда он зайдёт через неё и нажмёт /start,\n"
+        "его профиль автоматически активируется с уровнем доступа <b>friend</b>.\n\n"
+        f"Ссылка:\n<code>{link}</code>\n\n"
+        "Лимит: до 5 использований."
+    )
 
 
 async def handle_friend_requests(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1205,6 +1423,43 @@ async def handle_friends_callback(update: Update, context: ContextTypes.DEFAULT_
     await handle_friend_list(update, context)
 
 
+async def handle_suggest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = load_data()
+    if await abort_if_banned(update, data):
+        return
+    user = update.effective_user
+    uid = user.id
+
+    if not context.args:
+        await update.effective_message.reply_text(
+            "Отправь предложение или идею в формате:\n"
+            "<code>/suggest хочу увидеть вот такой тайтл...</code>"
+        )
+        return
+
+    text = " ".join(context.args).strip()
+    if not text:
+        await update.effective_message.reply_text("Текст предложения пустой.")
+        return
+
+    admins_all = set(ADMINS) | set(data.get("admins", []))
+    for aid in admins_all:
+        try:
+            await context.bot.send_message(
+                chat_id=aid,
+                text=(
+                    "📩 <b>Новое предложение от пользователя</b>\n\n"
+                    f"От: <a href='tg://user?id={uid}'>{uid}</a>\n\n"
+                    f"Текст:\n{text}"
+                ),
+                parse_mode=ParseMode.HTML,
+            )
+        except Exception:
+            pass
+
+    await update.effective_message.reply_text("Спасибо! Твоё предложение отправлено админам.")
+
+
 async def handle_ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = load_data()
     user_id = update.effective_user.id
@@ -1365,8 +1620,38 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await query.edit_message_text(text, reply_markup=kb)
         return
 
+    if data_str == "verify_sub":
+        subscribed = await is_subscribed(context, user_id)
+        if subscribed:
+            user_data["activated"] = True
+            save_data(data)
+            kb = InlineKeyboardMarkup(
+                [[InlineKeyboardButton("📚 Открыть главное меню", callback_data="main_menu")]]
+            )
+            await query.edit_message_text(
+                "✅ Подписка подтверждена, профиль активирован.\n\n"
+                "Теперь можно пользоваться навигацией и сохранять прогресс.",
+                reply_markup=kb,
+            )
+        else:
+            await query.message.reply_text(
+                "Я пока не вижу подписку на канал.\n\n"
+                "Подпишись на AnimeHUB | Dream, подожди пару секунд и нажми кнопку ещё раз."
+            )
+        return
+
     if data_str == "main_menu":
         await show_main_menu(update, context, data)
+        return
+
+    if data_str == "suggest_info":
+        await query.message.reply_text(
+            "Хочешь предложить тайтл или идею для AnimeHUB | Dream?\n\n"
+            "Просто напиши:\n"
+            "<code>/suggest твой текст</code>\n\n"
+            "Сообщение улетит прямо админам.",
+            parse_mode=ParseMode.HTML,
+        )
         return
 
     if data_str.startswith("sec_"):
@@ -1964,15 +2249,19 @@ def main() -> None:
     application.add_handler(CommandHandler("watched_add", handle_watched_add))
     application.add_handler(CommandHandler("watched_remove", handle_watched_remove))
     application.add_handler(CommandHandler("watched_list", handle_watched_list))
+    application.add_handler(CommandHandler("weekly", handle_weekly))
     application.add_handler(CommandHandler("stats", handle_stats))
     application.add_handler(CommandHandler("users", handle_users))
     application.add_handler(CommandHandler("title", handle_title))
+    application.add_handler(CommandHandler("search", handle_search))
     application.add_handler(CommandHandler("myid", handle_myid))
     application.add_handler(CommandHandler("friend_invite", handle_friend_invite))
+    application.add_handler(CommandHandler("invite_friend", handle_invite_friend))
     application.add_handler(CommandHandler("friend_requests", handle_friend_requests))
     application.add_handler(CommandHandler("friend_accept", handle_friend_accept))
     application.add_handler(CommandHandler("friend_list", handle_friend_list))
     application.add_handler(CommandHandler("friend_vs", handle_friend_vs))
+    application.add_handler(CommandHandler("suggest", handle_suggest))
     application.add_handler(CommandHandler("link_post", handle_link_post))
     application.add_handler(CommandHandler("repost", handle_repost))
     application.add_handler(CommandHandler("ban_user", handle_ban_user))
