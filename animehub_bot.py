@@ -768,7 +768,7 @@ async def render_hot_now(data, user_data):
         return SECTION_TEXTS["hot_now"] + "\n\nСписок тайтлов скоро появится."
     lines = [SECTION_TEXTS["hot_now"].rstrip(), ""]
     lines.append("🔥 <b>Сейчас в фокусе:</b>")
-    for t in hot_titles[:10]:
+    for t in hot_titles[:25]:
         lines.append(f"• <b>{t['name']}</b> — <code>/title {t['id']}</code>")
     return "\n".join(lines)
 
