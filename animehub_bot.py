@@ -700,6 +700,32 @@ def build_title_keyboard(title_id: str, user_data: dict) -> InlineKeyboardMarkup
     return InlineKeyboardMarkup(keyboard)
 
 
+def format_genres(genres: str, max_tags: int = 3, line_limit: int = 40) -> str:
+    parts = genres.split()
+    if not parts:
+        return "-"
+    if max_tags and len(parts) > max_tags:
+        parts = parts[:max_tags]
+    short = " ".join(parts)
+    return wrap_text_by_words(short, line_limit)
+
+
+    def wrap_text_by_words(text: str, limit: int = 40) -> str:
+    words = text.split()
+    if not words:
+        return text
+    lines = []
+    current = words[0]
+    for w in words[1:]:
+        if len(current) + 1 + len(w) > limit:
+            lines.append(current)
+            current = w
+        else:
+            current += " " + w
+    lines.append(current)
+    return "\n".join(lines)
+
+
 def build_premium_card(title: dict) -> str:
     access = title.get("min_access", "free")
     access_label = {
@@ -707,6 +733,13 @@ def build_premium_card(title: dict) -> str:
         "friend": "Доступ для друзей",
         "vip": "VIP-доступ",
     }.get(access, "Ограниченный доступ")
+
+    genres_raw = title.get("genres", "-")
+    if genres_raw and genres_raw != "-":
+        genres_text = format_genres(genres_raw, max_tags=3, line_limit=40)
+    else:
+        genres_text = "-"
+
 
     return (
         f"🎬 ⭐ <b>{title['name']}</b>\n"
@@ -727,7 +760,7 @@ def build_premium_card(title: dict) -> str:
         f"🎥 Кинопоиск: {title.get('kp', '-')}\n\n"
         "━━━━━━━━━━━━━━━━━━━━\n\n"
         "🏷 <b>Жанры</b>\n"
-        f"{title.get('genres', '-')}\n\n"
+        f"{genres_text}\n\n"
         "━━━━━━━━━━━━━━━━━━━━\n\n"
         "📂 <b>Сезоны / Плейлисты</b>\n"
         f"{title.get('playlist', 'Ссылка на плейлист появится позже')}\n\n"
