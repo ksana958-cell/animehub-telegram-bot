@@ -700,30 +700,35 @@ def build_title_keyboard(title_id: str, user_data: dict) -> InlineKeyboardMarkup
     return InlineKeyboardMarkup(keyboard)
 
 
-def format_genres(genres: str, max_tags: int = 3, line_limit: int = 40) -> str:
-    parts = genres.split()
-    if not parts:
-        return "-"
-    if max_tags and len(parts) > max_tags:
-        parts = parts[:max_tags]
-    short = " ".join(parts)
-    return wrap_text_by_words(short, line_limit)
-
-
-    def wrap_text_by_words(text: str, limit: int = 40) -> str:
+def wrap_text_by_words(text: str, limit: int = 40) -> str:
     words = text.split()
     if not words:
         return text
+
     lines = []
     current = words[0]
+
     for w in words[1:]:
         if len(current) + 1 + len(w) > limit:
             lines.append(current)
             current = w
         else:
             current += " " + w
+
     lines.append(current)
     return "\n".join(lines)
+
+
+def format_genres(genres: str, max_tags: int = 3, line_limit: int = 40) -> str:
+    parts = genres.split()
+    if not parts:
+        return "-"
+
+    if max_tags and len(parts) > max_tags:
+        parts = parts[:max_tags]
+
+    short = " ".join(parts)
+    return wrap_text_by_words(short, line_limit)
 
 
 def build_premium_card(title: dict) -> str:
