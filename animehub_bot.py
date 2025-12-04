@@ -475,6 +475,30 @@ ACCESS_CODES = {
 }
 
 
+LAST_BOT_MESSAGE_KEY = "last_bot_message_id"
+
+
+async def send_with_cleanup(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    text: str,
+    **kwargs,
+):
+    chat_id = update.effective_chat.id
+    user_store = context.user_data
+    last_id = user_store.get(LAST_BOT_MESSAGE_KEY)
+
+    if last_id:
+        try:
+            await context.bot.delete_message(chat_id=chat_id, message_id=last_id)
+        except Exception:
+            pass
+
+    sent = await update.effective_message.reply_text(text, **kwargs)
+    user_store[LAST_BOT_MESSAGE_KEY] = sent.message_id
+    return sent
+
+
 def default_data():
     return {
         "version": 1,
@@ -794,7 +818,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, dat
     )
     reply_markup = build_main_menu_keyboard()
     if update.message:
-        await update.message.reply_text(text, reply_markup=reply_markup)
+        await send_with_cleanup(update, context, text, reply_markup=reply_markup)
     elif update.callback_query:
         await update.callback_query.edit_message_text(text, reply_markup=reply_markup)
 
@@ -938,7 +962,7 @@ async def send_random_title(
     if from_callback:
         await update.callback_query.edit_message_text(text, reply_markup=kb)
     else:
-        await update.effective_message.reply_text(text, reply_markup=kb)
+        await send_with_cleanup(update, context, text, reply_markup=kb)
 
 
 async def show_profile(
@@ -1139,7 +1163,7 @@ async def handle_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     for k, v in sections.items():
         parts.append(f"• <b>{k}</b>: {v}")
     text = "\n".join(parts)
-    await update.effective_message.reply_text(text)
+    await send_with_cleanup(update, context, text)
 
 
 async def handle_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1167,7 +1191,7 @@ async def handle_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
 
     text = "\n".join(lines)
-    await update.effective_message.reply_text(text)
+    await send_with_cleanup(update, context, text)
 
 
 async def handle_favorites(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1196,7 +1220,7 @@ async def handle_favorites(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         else:
             lines.append(f"• Неизвестный тайтл: {fid}")
     text = "\n".join(lines)
-    await update.effective_message.reply_text(text)
+    await send_with_cleanup(update, context, text)
 
 
 async def handle_watched_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1294,7 +1318,7 @@ async def handle_watched_list(update: Update, context: ContextTypes.DEFAULT_TYPE
         lines.append(f"\nПрогресс: <b>{len(watched)}/{total_top150}</b> ({percent}%)")
 
     text = "\n".join(lines)
-    await update.effective_message.reply_text(text)
+    await send_with_cleanup(update, context, text)
 
 
 def weekly_rank(diff):
@@ -1712,7 +1736,7 @@ async def handle_friend_requests(update: Update, context: ContextTypes.DEFAULT_T
             f"• <a href='tg://user?id={rid}'>Пользователь {rid}</a> — принять: <code>/friend_accept {rid}</code>"
         )
     text = "\n".join(lines)
-    await update.effective_message.reply_text(text)
+    await send_with_cleanup(update, context, text)
 
 
 async def handle_friend_accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1789,7 +1813,7 @@ async def handle_friend_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
         lines.append(f"• <a href='tg://user?id={fid}'>{name}</a>")
     lines.append("\nЧтобы сравнить прогресс, используй:\n<code>/friend_vs ID_друга</code>")
     text = "\n".join(lines)
-    await update.effective_message.reply_text(text)
+    await send_with_cleanup(update, context, text)
 
 
 async def handle_friend_vs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1852,7 +1876,7 @@ async def handle_friend_vs(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         f"{fav_result}\n"
         f"{top_result}"
     )
-    await update.effective_message.reply_text(text)
+    await send_with_cleanup(update, context, text)
 
 
 async def handle_favorites_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1969,7 +1993,7 @@ async def handle_admin_list(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         mark = " (root)" if aid in base_admins else ""
         lines.append(f"• <a href='tg://user?id={aid}'>{aid}</a>{mark}")
     text = "\n".join(lines)
-    await update.effective_message.reply_text(text)
+    await send_with_cleanup(update, context, text)
 
 
 async def handle_add_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
