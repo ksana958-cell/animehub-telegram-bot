@@ -19,17 +19,21 @@ import json
 import os
 import random
 import time
+import asyncio
+import re
 
 CONFIG = {
     "BOT_TOKEN": "8595192008:AAFUokx5z42w-lMmlxVqrzW43tpu0U1mOGA",
     "CHANNEL_USERNAME": "@AnimeHUB_Dream",
     "DATA_FILE": "bot_data.json",
+    "TITLES_FILE": "titles.json",
     "ADMINS": [813738453],
 }
 
 BOT_TOKEN = CONFIG["BOT_TOKEN"]
 CHANNEL_USERNAME = CONFIG["CHANNEL_USERNAME"]
 DATA_FILE = CONFIG["DATA_FILE"]
+TITLES_FILE = CONFIG["TITLES_FILE"]
 ADMINS = CONFIG["ADMINS"]
 
 ACCESS_LEVELS = {
@@ -49,7 +53,15 @@ RATE_LIMIT = {}
 HEAVY_ACTIVE = 0
 HEAVY_MAX = 10
 
-TITLES = [
+TITLE_STATUSES = {
+    "planned": "📌 В планах",
+    "watching": "👀 Смотрю",
+    "completed": "✅ Просмотрено",
+    "dropped": "⛔ Забросил",
+}
+TITLE_STATUS_ORDER = ["planned", "watching", "completed", "dropped"]
+
+DEFAULT_TITLES = [
     {
         "id": "solo_leveling",
         "name": "Поднятие уровня в одиночку",
@@ -75,7 +87,7 @@ TITLES = [
             "рейды, интриги мира охотников и всё более мрачные тайны, связанные с его "
             "собственным предназначением."
         ),
-        "top150": True,
+        "top150": False,
         "min_access": "free",
         "hot": True,
         "added_at": int(time.time()),
@@ -330,7 +342,7 @@ TOP150_MERGED_LIST = [
     "Welcome to the N.H.K. — Добро пожаловать в NHK",
     "Hyouka — Хёка",
     "Oregairu (My Teen Romantic Comedy SNAFU) — Как и ожидалось, моя школьная романтическая жизнь не удалась",
-    "Laid-Back Camp (Yuru Camp) — Лагерь на свежем воздухе",
+    "Laid-Back Camp (Yuru Camp) — Лагерь на свежем воздухе (Yuru Camp)",
     "Oshi no Ko — Ребёнок идола",
     "Cyberpunk: Edgerunners — Киберпанк: Бегущие по краю",
     "86 Eighty-Six — Восемьдесят шесть",
@@ -415,61 +427,6 @@ TOP150_MERGED_LIST = [
 
 TOP150_PAGE_SIZE = 25
 
-
-def build_top150_page_text(kind: str, page: int) -> tuple[str, int, int]:
-    data_list = TOP150_POSTER_LIST if kind == "poster" else TOP150_MERGED_LIST
-    total = len(data_list)
-    total_pages = (total + TOP150_PAGE_SIZE - 1) // TOP150_PAGE_SIZE
-    if total_pages == 0:
-        return "Список пуст.", 1, 1
-    if page < 1:
-        page = 1
-    if page > total_pages:
-        page = total_pages
-    start = (page - 1) * TOP150_PAGE_SIZE
-    end = min(start + TOP150_PAGE_SIZE, total)
-    if kind == "poster":
-        header = "🏆 150 лучших аниме — список постера\n"
-    else:
-        header = "🏆 150 лучших аниме — объединённый рейтинг\n"
-    lines = [
-        header,
-        f"Страница {page}/{total_pages}\n",
-    ]
-    for i in range(start, end):
-        pos = i + 1
-        title = data_list[i]
-        lines.append(f"{pos}. {title}")
-    text = "\n".join(lines)
-    return text, page, total_pages
-
-
-def build_top150_page_keyboard(kind: str, page: int, total_pages: int) -> InlineKeyboardMarkup:
-    keyboard = []
-    prefix = "top150_poster_page" if kind == "poster" else "top150_merged_page"
-
-    if total_pages > 1:
-        row = []
-        if page > 1:
-            row.append(InlineKeyboardButton("⬅️ Назад", callback_data=f"{prefix}_{page - 1}"))
-        if page < total_pages:
-            row.append(InlineKeyboardButton("Вперёд ➡️", callback_data=f"{prefix}_{page + 1}"))
-        if row:
-            keyboard.append(row)
-
-    other_kind = "merged" if kind == "poster" else "poster"
-    other_text = "⭐ Объединённый рейтинг" if kind == "poster" else "📜 Список постера"
-    other_prefix = "top150_merged_page" if other_kind == "merged" else "top150_poster_page"
-    keyboard.append([InlineKeyboardButton(other_text, callback_data=f"{other_prefix}_1")])
-    keyboard.append(
-        [
-            InlineKeyboardButton("⬅️ К выбору списка", callback_data="sec_top150"),
-            InlineKeyboardButton("⬅️ Главное меню", callback_data="main_menu"),
-        ]
-    )
-    return InlineKeyboardMarkup(keyboard)
-
-
 ACCESS_CODES = {
     "AHVIP2025": "vip",
     "AHFRIENDS": "friend",
@@ -477,32 +434,127 @@ ACCESS_CODES = {
 
 LAST_BOT_MESSAGE_KEY = "last_bot_message_id"
 
+DATA_LOCK = asyncio.Lock()
+TITLES_LOCK = asyncio.Lock()
 
-async def send_with_cleanup(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-    text: str,
-    **kwargs,
-):
-    chat_id = update.effective_chat.id
-    user_store = context.user_data
-    last_id = user_store.get(LAST_BOT_MESSAGE_KEY)
+TITLES_CACHE = []
+TITLES_BY_ID = {}
+TOP150_MAP_POSTER = {}
+TOP150_MAP_MERGED = {}
 
-    if last_id:
+
+def norm_title(s: str) -> str:
+    s = (s or "").lower().strip()
+    s = s.replace("ё", "е")
+    s = re.sub(r"\(.*?\)", "", s)
+    s = re.sub(r"[^a-z0-9а-я\s\-×]", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+def merged_rus_title(s: str) -> str:
+    if "—" in s:
+        return s.split("—", 1)[1].strip()
+    return s.strip()
+
+
+def rebuild_top150_maps():
+    global TOP150_MAP_POSTER, TOP150_MAP_MERGED
+    TOP150_MAP_POSTER = {}
+    TOP150_MAP_MERGED = {}
+
+    for i, name in enumerate(TOP150_POSTER_LIST, start=1):
+        TOP150_MAP_POSTER[norm_title(name)] = i
+
+    for i, line in enumerate(TOP150_MERGED_LIST, start=1):
+        ru = merged_rus_title(line)
+        TOP150_MAP_MERGED[norm_title(ru)] = i
+
+
+def ensure_title_top150_fields(title: dict):
+    n = norm_title(title.get("name", ""))
+    poster_pos = TOP150_MAP_POSTER.get(n)
+    merged_pos = TOP150_MAP_MERGED.get(n)
+
+    title["top150_poster_pos"] = poster_pos
+    title["top150_merged_pos"] = merged_pos
+    title["top150"] = bool(poster_pos or merged_pos)
+
+
+async def load_titles() -> list[dict]:
+    global TITLES_CACHE, TITLES_BY_ID
+    async with TITLES_LOCK:
+        if not os.path.exists(TITLES_FILE):
+            rebuild_top150_maps()
+            titles = DEFAULT_TITLES[:]
+            for t in titles:
+                ensure_title_top150_fields(t)
+            tmp = TITLES_FILE + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump({"version": 1, "titles": titles}, f, ensure_ascii=False, indent=2)
+            os.replace(tmp, TITLES_FILE)
+            TITLES_CACHE = titles
+            TITLES_BY_ID = {t["id"]: t for t in titles}
+            return titles
+
         try:
-            await context.bot.delete_message(chat_id=chat_id, message_id=last_id)
-        except Exception:
-            pass
+            with open(TITLES_FILE, "r", encoding="utf-8") as f:
+                obj = json.load(f)
+        except json.JSONDecodeError:
+            broken = TITLES_FILE + f".broken_{int(time.time())}"
+            try:
+                os.replace(TITLES_FILE, broken)
+            except OSError:
+                pass
+            rebuild_top150_maps()
+            titles = DEFAULT_TITLES[:]
+            for t in titles:
+                ensure_title_top150_fields(t)
+            tmp = TITLES_FILE + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump({"version": 1, "titles": titles}, f, ensure_ascii=False, indent=2)
+            os.replace(tmp, TITLES_FILE)
+            TITLES_CACHE = titles
+            TITLES_BY_ID = {t["id"]: t for t in titles}
+            return titles
 
-    if update.message:
-        try:
-            await context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
-        except Exception:
-            pass
+        titles = obj.get("titles", [])
+        if not isinstance(titles, list):
+            titles = []
 
-    sent = await update.effective_message.reply_text(text, **kwargs)
-    user_store[LAST_BOT_MESSAGE_KEY] = sent.message_id
-    return sent
+        rebuild_top150_maps()
+        fixed = []
+        for t in titles:
+            if not isinstance(t, dict):
+                continue
+            if "id" not in t or "name" not in t:
+                continue
+            ensure_title_top150_fields(t)
+            if "added_at" not in t:
+                t["added_at"] = int(time.time())
+            if "min_access" not in t:
+                t["min_access"] = "free"
+            if "hot" not in t:
+                t["hot"] = False
+            fixed.append(t)
+
+        TITLES_CACHE = fixed
+        TITLES_BY_ID = {t["id"]: t for t in fixed}
+        return fixed
+
+
+async def save_titles(titles: list[dict]) -> None:
+    async with TITLES_LOCK:
+        rebuild_top150_maps()
+        for t in titles:
+            ensure_title_top150_fields(t)
+        tmp = TITLES_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump({"version": 1, "titles": titles}, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, TITLES_FILE)
+        global TITLES_CACHE, TITLES_BY_ID
+        TITLES_CACHE = titles
+        TITLES_BY_ID = {t["id"]: t for t in titles}
 
 
 def default_data():
@@ -526,58 +578,89 @@ def default_data():
     }
 
 
-def load_data():
-    if not os.path.exists(DATA_FILE):
-        return default_data()
-    try:
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except json.JSONDecodeError:
-        broken_name = DATA_FILE + f".broken_{int(time.time())}"
+async def load_data():
+    async with DATA_LOCK:
+        if not os.path.exists(DATA_FILE):
+            return default_data()
         try:
-            os.replace(DATA_FILE, broken_name)
+            with open(DATA_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except json.JSONDecodeError:
+            broken_name = DATA_FILE + f".broken_{int(time.time())}"
+            try:
+                os.replace(DATA_FILE, broken_name)
+            except OSError:
+                pass
+            return default_data()
+
+        base = default_data()
+        for k, v in base.items():
+            if k not in data:
+                data[k] = v
+
+        if "stats" not in data:
+            data["stats"] = base["stats"]
+        if "sections" not in data["stats"]:
+            data["stats"]["sections"] = {}
+
+        for key in ["random_used", "started", "posts_created", "posts_edited", "drafts_created", "reposts"]:
+            if key not in data["stats"]:
+                data["stats"][key] = 0
+
+        for k in ["friend_requests", "users", "posts", "banned", "invites"]:
+            if k not in data:
+                data[k] = {}
+
+        if "admins" not in data:
+            data["admins"] = ADMINS[:]
+        if "version" not in data:
+            data["version"] = 1
+
+        posts = data.get("posts", {})
+        for mid, info in posts.items():
+            if "caption" not in info:
+                info["caption"] = None
+            if "title_id" not in info:
+                info["title_id"] = None
+        data["posts"] = posts
+
+        return data
+
+
+def rotate_backups(path: str, keep: int = 7):
+    if keep <= 0:
+        return
+    for i in range(keep, 0, -1):
+        src = f"{path}.bak{i}"
+        dst = f"{path}.bak{i+1}"
+        if os.path.exists(src):
+            if i == keep:
+                try:
+                    os.remove(src)
+                except OSError:
+                    pass
+            else:
+                try:
+                    os.replace(src, dst)
+                except OSError:
+                    pass
+    if os.path.exists(path):
+        try:
+            with open(path, "rb") as fsrc:
+                content = fsrc.read()
+            with open(f"{path}.bak1", "wb") as fdst:
+                fdst.write(content)
         except OSError:
             pass
-        return default_data()
-
-    base = default_data()
-    for k, v in base.items():
-        if k not in data:
-            data[k] = v
-    if "sections" not in data["stats"]:
-        data["stats"]["sections"] = {}
-    for key in ["random_used", "started", "posts_created", "posts_edited", "drafts_created", "reposts"]:
-        if key not in data["stats"]:
-            data["stats"][key] = 0
-    if "friend_requests" not in data:
-        data["friend_requests"] = {}
-    if "users" not in data:
-        data["users"] = {}
-    if "posts" not in data:
-        data["posts"] = {}
-    if "banned" not in data:
-        data["banned"] = {}
-    if "version" not in data:
-        data["version"] = 1
-    if "admins" not in data:
-        data["admins"] = ADMINS[:]
-    if "invites" not in data:
-        data["invites"] = {}
-
-    posts = data.get("posts", {})
-    for mid, info in posts.items():
-        if "caption" not in info:
-            info["caption"] = None
-    data["posts"] = posts
-
-    return data
 
 
-def save_data(data):
-    tmp = DATA_FILE + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, DATA_FILE)
+async def save_data(data):
+    async with DATA_LOCK:
+        rotate_backups(DATA_FILE, keep=7)
+        tmp = DATA_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, DATA_FILE)
 
 
 def get_user(data, user_id):
@@ -593,6 +676,7 @@ def get_user(data, user_id):
             "username": None,
             "full_name": None,
             "weekly_150_start": 0,
+            "title_statuses": {},
         }
     else:
         u = data["users"][uid]
@@ -614,9 +698,10 @@ def get_user(data, user_id):
             u["full_name"] = None
         if "weekly_150_start" not in u:
             u["weekly_150_start"] = len(u.get("watched_150", []))
+        if "title_statuses" not in u or not isinstance(u["title_statuses"], dict):
+            u["title_statuses"] = {}
 
-    user = data["users"][uid]
-    return user
+    return data["users"][uid]
 
 
 def update_user_names(data, user_id, tg_user):
@@ -682,6 +767,134 @@ async def abort_if_banned(update: Update, data) -> bool:
     return False
 
 
+async def send_with_cleanup(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, **kwargs):
+    chat_id = update.effective_chat.id
+    user_store = context.user_data
+    last_id = user_store.get(LAST_BOT_MESSAGE_KEY)
+
+    if last_id:
+        try:
+            await context.bot.delete_message(chat_id=chat_id, message_id=last_id)
+        except Exception:
+            pass
+
+    sent = await update.effective_message.reply_text(text, **kwargs)
+    user_store[LAST_BOT_MESSAGE_KEY] = sent.message_id
+    return sent
+
+
+def wrap_text_by_words(text: str, limit: int = 40) -> str:
+    words = text.split()
+    if not words:
+        return text
+    lines = []
+    current = words[0]
+    for w in words[1:]:
+        if len(current) + 1 + len(w) > limit:
+            lines.append(current)
+            current = w
+        else:
+            current += " " + w
+    lines.append(current)
+    return "\n".join(lines)
+
+
+def format_genres(genres: str, max_tags: int = 3, line_limit: int = 40) -> str:
+    parts = genres.split()
+    if not parts:
+        return "-"
+    if max_tags and len(parts) > max_tags:
+        parts = parts[:max_tags]
+    short = " ".join(parts)
+    return wrap_text_by_words(short, line_limit)
+
+
+def title_top150_badge(title: dict) -> str:
+    p = title.get("top150_poster_pos")
+    m = title.get("top150_merged_pos")
+    if p and m:
+        return f"🏆 Входит в 150: 📜 постер #{p} · ⭐ объединённый #{m}"
+    if p:
+        return f"🏆 Входит в 150: 📜 постер #{p}"
+    if m:
+        return f"🏆 Входит в 150: ⭐ объединённый #{m}"
+    return ""
+
+
+def get_title_status(user_data: dict, title_id: str) -> str | None:
+    st = user_data.get("title_statuses", {}).get(title_id)
+    if st in TITLE_STATUSES:
+        return st
+    return None
+
+
+def set_title_status(user_data: dict, title_id: str, status: str):
+    if "title_statuses" not in user_data or not isinstance(user_data["title_statuses"], dict):
+        user_data["title_statuses"] = {}
+    if status not in TITLE_STATUSES:
+        return
+    user_data["title_statuses"][title_id] = status
+
+
+def sync_watched_150_rule_b(user_data: dict, title: dict):
+    tid = title.get("id")
+    if not tid:
+        return
+    watched = user_data.get("watched_150", [])
+    if not isinstance(watched, list):
+        watched = []
+    st = get_title_status(user_data, tid)
+    in_150 = bool(title.get("top150_poster_pos") or title.get("top150_merged_pos"))
+    if not in_150:
+        if tid in watched:
+            watched.remove(tid)
+        user_data["watched_150"] = watched
+        return
+    if st == "completed":
+        if tid not in watched:
+            watched.append(tid)
+    else:
+        if tid in watched:
+            watched.remove(tid)
+    user_data["watched_150"] = watched
+
+
+def build_title_keyboard(title: dict, user_data: dict) -> InlineKeyboardMarkup:
+    tid = title["id"]
+
+    favs = user_data.get("favorites", [])
+    if tid in favs:
+        fav_text = "⭐ Убрать из избранного"
+        fav_cb = f"fav_remove:{tid}"
+    else:
+        fav_text = "⭐ В избранное"
+        fav_cb = f"fav_add:{tid}"
+
+    status = get_title_status(user_data, tid) or "planned"
+    status_label = TITLE_STATUSES.get(status, TITLE_STATUSES["planned"])
+
+    kb = []
+    kb.append([InlineKeyboardButton(fav_text, callback_data=fav_cb)])
+
+    st_row = [
+        InlineKeyboardButton("📌 В планах", callback_data=f"st_set:{tid}:planned"),
+        InlineKeyboardButton("👀 Смотрю", callback_data=f"st_set:{tid}:watching"),
+    ]
+    kb.append(st_row)
+
+    st_row2 = [
+        InlineKeyboardButton("✅ Просмотрено", callback_data=f"st_set:{tid}:completed"),
+        InlineKeyboardButton("⛔ Забросил", callback_data=f"st_set:{tid}:dropped"),
+    ]
+    kb.append(st_row2)
+
+    if title.get("top150"):
+        kb.append([InlineKeyboardButton("🏆 Засчитать в 150 (только если Просмотрено)", callback_data=f"st_set:{tid}:completed")])
+
+    kb.append([InlineKeyboardButton("⬅️ Главное меню", callback_data="main_menu")])
+    return InlineKeyboardMarkup(kb)
+
+
 def build_main_menu_keyboard() -> InlineKeyboardMarkup:
     keyboard = [
         [InlineKeyboardButton("📚 Аниме по тайтлам", callback_data="sec_titles")],
@@ -714,53 +927,7 @@ def build_section_keyboard(section: str | None = None) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(keyboard)
 
 
-def build_title_keyboard(title_id: str, user_data: dict) -> InlineKeyboardMarkup:
-    favs = user_data.get("favorites", [])
-    if title_id in favs:
-        text = "⭐ Убрать из избранного"
-        cb = f"fav_remove:{title_id}"
-    else:
-        text = "⭐ В избранное"
-        cb = f"fav_add:{title_id}"
-    keyboard = [
-        [InlineKeyboardButton(text, callback_data=cb)],
-        [InlineKeyboardButton("⬅️ Главное меню", callback_data="main_menu")],
-    ]
-    return InlineKeyboardMarkup(keyboard)
-
-
-def wrap_text_by_words(text: str, limit: int = 40) -> str:
-    words = text.split()
-    if not words:
-        return text
-
-    lines = []
-    current = words[0]
-
-    for w in words[1:]:
-        if len(current) + 1 + len(w) > limit:
-            lines.append(current)
-            current = w
-        else:
-            current += " " + w
-
-    lines.append(current)
-    return "\n".join(lines)
-
-
-def format_genres(genres: str, max_tags: int = 3, line_limit: int = 40) -> str:
-    parts = genres.split()
-    if not parts:
-        return "-"
-
-    if max_tags and len(parts) > max_tags:
-        parts = parts[:max_tags]
-
-    short = " ".join(parts)
-    return wrap_text_by_words(short, line_limit)
-
-
-def build_premium_card(title: dict) -> str:
+def build_premium_card(title: dict, user_data: dict | None = None) -> str:
     access = title.get("min_access", "free")
     access_label = {
         "free": "Открыт для всех",
@@ -774,10 +941,21 @@ def build_premium_card(title: dict) -> str:
     else:
         genres_text = "-"
 
+    badge = title_top150_badge(title)
+    badge_line = f"{badge}\n\n" if badge else ""
+
+    status_line = ""
+    if user_data is not None:
+        st = get_title_status(user_data, title["id"])
+        if st:
+            status_line = f"🎯 <b>Твой статус:</b> {TITLE_STATUSES.get(st, st)}\n\n"
+
     return (
         f"🎬 ⭐ <b>{title['name']}</b>\n"
         f"{title.get('season', 'Сезон 1')} · ТВ-сериал\n\n"
         "━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"{badge_line}"
+        f"{status_line}"
         "📌 <b>Информация</b>\n"
         f"📅 Статус: {title.get('status', 'Вышел')}\n"
         f"🎞 Эпизодов: {title.get('episodes', '??')}\n"
@@ -808,29 +986,70 @@ def build_premium_card(title: dict) -> str:
     )
 
 
-def build_titles_list_text(user_data: dict) -> str:
-    lines = [SECTION_TEXTS["titles"].rstrip(), ""]
-    available = []
-    for t in TITLES:
-        req = t.get("min_access", "free")
-        if has_access(user_data, req):
-            available.append(t)
-    if not available:
-        lines.append("Пока нет тайтлов для твоего уровня доступа.")
-        return "\n".join(lines)
+TOP150_PAGE_SIZE = 25
 
-    available.sort(key=lambda x: x.get("name", ""))
-    lines.append("📚 <b>Доступные тайтлы:</b>")
-    for t in available[:50]:
-        lines.append(f"• <b>{t['name']}</b> — <code>/title {t['id']}</code>")
-    if len(available) > 50:
-        lines.append(f"\nПоказано 50 из {len(available)}. Используй поиск: <code>/search текст</code>")
-    return "\n".join(lines)
+
+def build_top150_page_text(kind: str, page: int) -> tuple[str, int, int]:
+    data_list = TOP150_POSTER_LIST if kind == "poster" else TOP150_MERGED_LIST
+    total = len(data_list)
+    total_pages = (total + TOP150_PAGE_SIZE - 1) // TOP150_PAGE_SIZE
+    if total_pages == 0:
+        return "Список пуст.", 1, 1
+    if page < 1:
+        page = 1
+    if page > total_pages:
+        page = total_pages
+    start = (page - 1) * TOP150_PAGE_SIZE
+    end = min(start + TOP150_PAGE_SIZE, total)
+    if kind == "poster":
+        header = "🏆 150 лучших аниме — список постера\n"
+    else:
+        header = "🏆 150 лучших аниме — объединённый рейтинг\n"
+    lines = [
+        header,
+        f"Страница {page}/{total_pages}\n",
+    ]
+    for i in range(start, end):
+        pos = i + 1
+        title = data_list[i]
+        lines.append(f"{pos}. {title}")
+    text = "\n".join(lines)
+    return text, page, total_pages
+
+
+def build_top150_page_keyboard(kind: str, page: int, total_pages: int) -> InlineKeyboardMarkup:
+    keyboard = []
+    prefix = "top150_poster_page" if kind == "poster" else "top150_merged_page"
+    if page > 1 or page < total_pages:
+        row = []
+        if page > 1:
+            row.append(InlineKeyboardButton("⬅️ Назад", callback_data=f"{prefix}_{page - 1}"))
+        if page < total_pages:
+            row.append(InlineKeyboardButton("Вперёд ➡️", callback_data=f"{prefix}_{page + 1}"))
+        if row:
+            keyboard.append(row)
+    other_kind = "merged" if kind == "poster" else "poster"
+    other_text = "⭐ Объединённый рейтинг" if kind == "poster" else "📜 Список постера"
+    other_prefix = "top150_merged_page" if other_kind == "merged" else "top150_poster_page"
+    keyboard.append([InlineKeyboardButton(other_text, callback_data=f"{other_prefix}_1")])
+    keyboard.append(
+        [
+            InlineKeyboardButton("⬅️ К выбору списка", callback_data="sec_top150"),
+            InlineKeyboardButton("⬅️ Главное меню", callback_data="main_menu"),
+        ]
+    )
+    return InlineKeyboardMarkup(keyboard)
+
+
+def ensure_friend_access(user_data):
+    current = user_data.get("access", "free")
+    if ACCESS_LEVELS.get("friend", 1) > ACCESS_LEVELS.get(current, 0):
+        user_data["access"] = "friend"
 
 
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, data) -> None:
     data["stats"]["started"] += 1
-    save_data(data)
+    await save_data(data)
     text = (
         "👋 Привет! Это навигационный бот канала AnimeHUB | Dream.\n\n"
         "Я помогаю ориентироваться в аниме-архиве:\n"
@@ -847,30 +1066,20 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, dat
         await update.callback_query.edit_message_text(text, reply_markup=reply_markup)
 
 
-async def render_hot_now(data, user_data):
-    hot_titles = [t for t in TITLES if t.get("hot")]
+async def render_hot_now(titles: list[dict]) -> str:
+    hot_titles = [t for t in titles if t.get("hot")]
     hot_titles.sort(key=lambda t: t.get("added_at", 0), reverse=True)
     if not hot_titles:
         return SECTION_TEXTS["hot_now"] + "\n\nСписок тайтлов скоро появится."
 
     lines = [SECTION_TEXTS["hot_now"].rstrip(), ""]
     lines.append("🔥 <b>Сейчас в фокусе:</b>")
-
     for t in hot_titles[:25]:
-        req = t.get("min_access", "free")
-        if has_access(user_data, req):
-            lines.append(f"• <b>{t['name']}</b> — <code>/title {t['id']}</code>")
-
+        lines.append(f"• <b>{t['name']}</b> — <code>/title {t['id']}</code>")
     return "\n".join(lines)
 
 
-async def send_section(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-    data,
-    section_key: str,
-    from_callback: bool,
-) -> None:
+async def send_section(update: Update, context: ContextTypes.DEFAULT_TYPE, data, section_key: str, from_callback: bool) -> None:
     user_id = update.effective_user.id
     tg_user = update.effective_user
     user_data = get_user(data, user_id)
@@ -889,12 +1098,12 @@ async def send_section(
         if from_callback:
             await update.callback_query.edit_message_text(text, reply_markup=kb)
         else:
-            await send_with_cleanup(update, context, text, reply_markup=kb)
-        save_data(data)
+            await update.effective_message.reply_text(text, reply_markup=kb)
+        await save_data(data)
         return
 
     inc_section_stat(data, section_key)
-    save_data(data)
+    await save_data(data)
 
     if section_key in ("top150", "movies"):
         subscribed = await is_subscribed(context, user_id)
@@ -905,20 +1114,44 @@ async def send_section(
             )
             kb = InlineKeyboardMarkup(
                 [
-                    [
-                        InlineKeyboardButton(
-                            "✅ Открыть канал",
-                            url=f"https://t.me/{CHANNEL_USERNAME.lstrip('@')}",
-                        )
-                    ],
+                    [InlineKeyboardButton("✅ Открыть канал", url=f"https://t.me/{CHANNEL_USERNAME.lstrip('@')}")],
                     [InlineKeyboardButton("⬅️ Главное меню", callback_data="main_menu")],
                 ]
             )
             if from_callback:
                 await update.callback_query.edit_message_text(text, reply_markup=kb)
             else:
-                await send_with_cleanup(update, context, text, reply_markup=kb)
+                await update.effective_message.reply_text(text, reply_markup=kb)
             return
+
+    titles = await load_titles()
+
+    if section_key == "hot_now":
+        text = await render_hot_now(titles)
+        kb = build_section_keyboard("hot_now")
+        if from_callback:
+            await update.callback_query.edit_message_text(text, reply_markup=kb)
+        else:
+            await update.effective_message.reply_text(text, reply_markup=kb)
+        return
+
+    if section_key == "titles":
+        text = SECTION_TEXTS["titles"] + "\n\n" + "Чтобы открыть карточку:\n<code>/title id</code>\n\n" + "Пример:\n<code>/title solo_leveling</code>"
+        kb = build_section_keyboard("titles")
+        if from_callback:
+            await update.callback_query.edit_message_text(text, reply_markup=kb)
+        else:
+            await update.effective_message.reply_text(text, reply_markup=kb)
+        return
+
+    if section_key == "movies":
+        text = SECTION_TEXTS["movies"]
+        kb = build_section_keyboard("movies")
+        if from_callback:
+            await update.callback_query.edit_message_text(text, reply_markup=kb)
+        else:
+            await update.effective_message.reply_text(text, reply_markup=kb)
+        return
 
     if section_key == "top150":
         text = (
@@ -938,54 +1171,11 @@ async def send_section(
         if from_callback:
             await update.callback_query.edit_message_text(text, reply_markup=kb)
         else:
-            await send_with_cleanup(update, context, text, reply_markup=kb)
-        return
-
-    if section_key == "hot_now":
-        text = await render_hot_now(data, user_data)
-        kb = build_section_keyboard("hot_now")
-        if from_callback:
-            await update.callback_query.edit_message_text(text, reply_markup=kb)
-        else:
-            await send_with_cleanup(update, context, text, reply_markup=kb)
-        return
-
-    if section_key == "titles":
-        text = build_titles_list_text(user_data)
-        kb = build_section_keyboard("titles")
-        if from_callback:
-            await update.callback_query.edit_message_text(text, reply_markup=kb)
-        else:
-            await send_with_cleanup(update, context, text, reply_markup=kb)
-        return
-
-    if section_key == "movies":
-        lines = [SECTION_TEXTS["movies"].rstrip(), ""]
-        movies = [t for t in TITLES if t.get("is_movie")]
-        if not movies:
-            lines.append("Список фильмов скоро появится.")
-        else:
-            movies.sort(key=lambda x: x.get("name", ""))
-            lines.append("🎬 <b>Полнометражки:</b>")
-            for t in movies[:50]:
-                req = t.get("min_access", "free")
-                if has_access(user_data, req):
-                    lines.append(f"• <b>{t['name']}</b> — <code>/title {t['id']}</code>")
-        text = "\n".join(lines)
-        kb = build_section_keyboard("movies")
-        if from_callback:
-            await update.callback_query.edit_message_text(text, reply_markup=kb)
-        else:
-            await send_with_cleanup(update, context, text, reply_markup=kb)
+            await update.effective_message.reply_text(text, reply_markup=kb)
         return
 
 
-async def send_random_title(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-    data,
-    from_callback: bool,
-) -> None:
+async def send_random_title(update: Update, context: ContextTypes.DEFAULT_TYPE, data, from_callback: bool) -> None:
     user_id = update.effective_user.id
     if check_rate_limit(user_id, "rand_title", 2.0):
         if from_callback and update.callback_query:
@@ -998,8 +1188,10 @@ async def send_random_title(
     user_data = get_user(data, user_id)
     update_user_names(data, user_id, tg_user)
 
+    titles = await load_titles()
+
     available = []
-    for t in TITLES:
+    for t in titles:
         required = t.get("min_access", "free")
         if has_access(user_data, required):
             available.append(t)
@@ -1012,26 +1204,21 @@ async def send_random_title(
         if from_callback:
             await update.callback_query.edit_message_text(text)
         else:
-            await send_with_cleanup(update, context, text)
+            await update.effective_message.reply_text(text)
         return
 
     data["stats"]["random_used"] += 1
-    save_data(data)
+    await save_data(data)
     title = random.choice(available)
-    text = f"🎲 Случайный тайтл:\n\n⭐ {title['name']}\n\n{title['desc']}"
-    kb = build_title_keyboard(title["id"], user_data)
+    card = build_premium_card(title, user_data=user_data)
+    kb = build_title_keyboard(title, user_data)
     if from_callback:
-        await update.callback_query.edit_message_text(text, reply_markup=kb)
+        await update.callback_query.edit_message_text(card, reply_markup=kb)
     else:
-        await send_with_cleanup(update, context, text, reply_markup=kb)
+        await send_with_cleanup(update, context, card, reply_markup=kb)
 
 
-async def show_profile(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-    data,
-    from_callback: bool,
-) -> None:
+async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE, data, from_callback: bool) -> None:
     user_id = update.effective_user.id
     tg_user = update.effective_user
     user_data = get_user(data, user_id)
@@ -1042,7 +1229,9 @@ async def show_profile(
     friends_count = len(user_data.get("friends", []))
     access = user_data.get("access", "free")
 
-    total_top150 = sum(1 for t in TITLES if t.get("top150"))
+    titles = await load_titles()
+    total_top150 = sum(1 for t in titles if t.get("top150"))
+
     progress = ""
     if total_top150 > 0:
         percent = round(watched_150 / total_top150 * 100, 1)
@@ -1055,7 +1244,9 @@ async def show_profile(
         f"⭐ Избранных тайтлов: <b>{fav_count}</b>\n"
         f"🏆 Прогресс по «150 лучшим аниме»: <b>{watched_150}</b>{progress}\n"
         f"🤝 Друзей: <b>{friends_count}</b>\n\n"
-        "Используй разделы бота, чтобы находить новые аниме и добавлять их в избранное."
+        "Статусы тайтлов:\n"
+        "📌 В планах · 👀 Смотрю · ✅ Просмотрено · ⛔ Забросил\n\n"
+        "Открывай карточки тайтлов и отмечай статус кнопками."
     )
     kb = InlineKeyboardMarkup(
         [
@@ -1068,32 +1259,28 @@ async def show_profile(
     if from_callback:
         await update.callback_query.edit_message_text(text, reply_markup=kb)
     else:
-        await send_with_cleanup(update, context, text, reply_markup=kb)
-
-
-def ensure_friend_access(user_data):
-    current = user_data.get("access", "free")
-    if ACCESS_LEVELS.get("friend", 1) > ACCESS_LEVELS.get(current, 0):
-        user_data["access"] = "friend"
+        await update.effective_message.reply_text(text, reply_markup=kb)
 
 
 async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
+
+    await load_titles()
+
     user_id = update.effective_user.id
     tg_user = update.effective_user
     user_data = get_user(data, user_id)
     update_user_names(data, user_id, tg_user)
-    save_data(data)
+    await save_data(data)
 
     args = context.args
-
     if args:
         arg0 = args[0].strip()
         if arg0.lower() == "activate":
             user_data["activated"] = True
-            save_data(data)
+            await save_data(data)
             text = (
                 "⚡ Профиль активирован!\n\n"
                 f"Твой Telegram ID: <code>{user_id}</code>\n\n"
@@ -1104,7 +1291,7 @@ async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 "Нажми кнопку ниже, чтобы открыть главное меню."
             )
             kb = InlineKeyboardMarkup([[InlineKeyboardButton("📚 Открыть главное меню", callback_data="main_menu")]])
-            await send_with_cleanup(update, context, text, reply_markup=kb)
+            await update.effective_message.reply_text(text, reply_markup=kb)
             return
 
         if arg0.startswith("friend_"):
@@ -1119,21 +1306,21 @@ async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 if max_uses is not None and info["uses"] >= max_uses:
                     invites.pop(token, None)
                 data["invites"] = invites
-                save_data(data)
+                await save_data(data)
                 text = (
                     "🤝 Ты вошёл по приглашению друга.\n\n"
                     "Профиль активирован, уровень доступа: <b>friend</b>.\n\n"
                     "Открывай главное меню и выбирай тайтлы."
                 )
                 kb = InlineKeyboardMarkup([[InlineKeyboardButton("📚 Открыть главное меню", callback_data="main_menu")]])
-                await send_with_cleanup(update, context, text, reply_markup=kb)
+                await update.effective_message.reply_text(text, reply_markup=kb)
                 return
 
     if not user_data.get("activated", False):
         subscribed = await is_subscribed(context, user_id)
         if subscribed:
             user_data["activated"] = True
-            save_data(data)
+            await save_data(data)
             await show_main_menu(update, context, data)
             return
 
@@ -1145,68 +1332,62 @@ async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
         kb = InlineKeyboardMarkup(
             [
-                [
-                    InlineKeyboardButton(
-                        "🏠 Открыть канал",
-                        url=f"https://t.me/{CHANNEL_USERNAME.lstrip('@')}",
-                    )
-                ],
+                [InlineKeyboardButton("🏠 Открыть канал", url=f"https://t.me/{CHANNEL_USERNAME.lstrip('@')}")],
                 [InlineKeyboardButton("✅ Я подписан", callback_data="verify_sub")],
             ]
         )
-        await send_with_cleanup(update, context, text, reply_markup=kb)
+        await update.effective_message.reply_text(text, reply_markup=kb)
         return
 
     await show_main_menu(update, context, data)
 
 
 async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
     await show_main_menu(update, context, data)
 
 
 async def handle_code(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
+
     user_id = update.effective_user.id
     tg_user = update.effective_user
     user_data = get_user(data, user_id)
     update_user_names(data, user_id, tg_user)
 
     if not context.args:
-        await send_with_cleanup(
-            update,
-            context,
-            "Введите код после команды, например:\n<code>/code AHVIP2025</code>",
-        )
+        await update.effective_message.reply_text("Введите код после команды, например:\n<code>/code AHVIP2025</code>")
         return
+
     code = context.args[0].strip()
     level = ACCESS_CODES.get(code)
     if not level:
-        await send_with_cleanup(update, context, "❌ Неверный или устаревший код доступа.")
+        await update.effective_message.reply_text("❌ Неверный или устаревший код доступа.")
         return
+
     user_data["access"] = level
-    save_data(data)
-    await send_with_cleanup(update, context, f"✅ Код принят. Новый уровень доступа: <b>{level}</b>")
+    await save_data(data)
+    await update.effective_message.reply_text(f"✅ Код принят. Новый уровень доступа: <b>{level}</b>")
 
 
 async def handle_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
     await show_profile(update, context, data, from_callback=False)
 
 
 async def handle_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
     if not is_admin(data, user_id):
-        await send_with_cleanup(update, context, "Эта команда доступна только администратору.")
+        await update.effective_message.reply_text("Эта команда доступна только администратору.")
         return
     users_count = len(data["users"])
     sections = data["stats"]["sections"]
@@ -1226,137 +1407,88 @@ async def handle_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 async def handle_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
     if not is_admin(data, user_id):
-        await send_with_cleanup(update, context, "Эта команда только для администратора.")
+        await update.effective_message.reply_text("Эта команда только для администратора.")
         return
 
     users = data.get("users", {})
     activated_users = [(uid, u) for uid, u in users.items() if u.get("activated")]
     total = len(activated_users)
-
     if total == 0:
-        await send_with_cleanup(update, context, "Пока нет ни одного активированного пользователя.")
+        await update.effective_message.reply_text("Пока нет ни одного активированного пользователя.")
         return
 
     lines = [f"👥 Активированные пользователи: <b>{total}</b>"]
     for uid, u in activated_users:
         name = u.get("full_name") or f"Пользователь {uid}"
         lines.append(f"• <a href='tg://user?id={uid}'>{name}</a> — <code>{uid}</code>")
-
-    text = "\n".join(lines)
-    await send_with_cleanup(update, context, text)
+    await send_with_cleanup(update, context, "\n".join(lines))
 
 
 async def handle_favorites(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
+
     user_id = update.effective_user.id
     tg_user = update.effective_user
     user_data = get_user(data, user_id)
     update_user_names(data, user_id, tg_user)
-    save_data(data)
+    await save_data(data)
 
     favs = user_data.get("favorites", [])
     if not favs:
-        await send_with_cleanup(
-            update,
-            context,
+        await update.effective_message.reply_text(
             "У тебя пока нет избранных тайтлов.\n"
-            "Открой карточку тайтла и нажми «⭐ В избранное».",
+            "Открой карточку тайтла и нажми «⭐ В избранное»."
         )
         return
 
+    titles = await load_titles()
+    by_id = {t["id"]: t for t in titles}
+
     lines = ["⭐ <b>Твои избранные тайтлы:</b>"]
     for fid in favs:
-        t = next((t for t in TITLES if t["id"] == fid), None)
+        t = by_id.get(fid)
         if t:
             lines.append(f"• <b>{t['name']}</b> — <code>/title {t['id']}</code>")
         else:
             lines.append(f"• Неизвестный тайтл: {fid}")
-    text = "\n".join(lines)
-    await send_with_cleanup(update, context, text)
-
-
-async def handle_watched_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
-    if await abort_if_banned(update, data):
-        return
-    user_id = update.effective_user.id
-    tg_user = update.effective_user
-    user_data = get_user(data, user_id)
-    update_user_names(data, user_id, tg_user)
-
-    if not context.args:
-        await send_with_cleanup(update, context, "Использование:\n<code>/watched_add solo_leveling</code>")
-        return
-    tid = context.args[0].strip().lower()
-    title = next((t for t in TITLES if t["id"] == tid), None)
-    if not title:
-        await send_with_cleanup(update, context, "❌ Тайтл с таким ID не найден.")
-        return
-
-    if title.get("top150"):
-        watched = user_data.get("watched_150", [])
-        if tid not in watched:
-            watched.append(tid)
-            user_data["watched_150"] = watched
-            save_data(data)
-            await send_with_cleanup(update, context, f"🏆 Тайтл «{title['name']}» отмечен как просмотренный из «150 лучших аниме».")
-        else:
-            await send_with_cleanup(update, context, "Этот тайтл уже отмечен как просмотренный в списке «150 лучших аниме».")
-    else:
-        await send_with_cleanup(update, context, "Этот тайтл сейчас не помечен как часть списка «150 лучших аниме».")
-
-
-async def handle_watched_remove(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
-    if await abort_if_banned(update, data):
-        return
-    user_id = update.effective_user.id
-    tg_user = update.effective_user
-    user_data = get_user(data, user_id)
-    update_user_names(data, user_id, tg_user)
-
-    if not context.args:
-        await send_with_cleanup(update, context, "Использование:\n<code>/watched_remove solo_leveling</code>")
-        return
-    tid = context.args[0].strip().lower()
-    watched = user_data.get("watched_150", [])
-    if tid in watched:
-        watched.remove(tid)
-        user_data["watched_150"] = watched
-        save_data(data)
-        await send_with_cleanup(update, context, "Тайтл убран из прогресса по «150 лучшим аниме».")
-    else:
-        await send_with_cleanup(update, context, "Этот тайтл не отмечен как просмотренный в 150.")
+    await send_with_cleanup(update, context, "\n".join(lines))
 
 
 async def handle_watched_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
+
     user_id = update.effective_user.id
     tg_user = update.effective_user
     user_data = get_user(data, user_id)
     update_user_names(data, user_id, tg_user)
 
+    titles = await load_titles()
+    by_id = {t["id"]: t for t in titles}
+
     watched = user_data.get("watched_150", [])
-    total_top150 = sum(1 for t in TITLES if t.get("top150"))
+    if not isinstance(watched, list):
+        watched = []
+
+    total_top150 = sum(1 for t in titles if t.get("top150"))
     if not watched:
-        msg = "Ты пока не отметил ни одного тайтла из «150 лучших аниме»."
+        msg = "Ты пока не отметил ни одного тайтла из «150 лучших аниме» как <b>Просмотрено</b>."
         if total_top150 > 0:
-            msg += "\n\nДобавь просмотренный тайтл командой:\n<code>/watched_add id</code>"
-        await send_with_cleanup(update, context, msg)
+            msg += "\n\nОткрой карточку тайтла и нажми «✅ Просмотрено»."
+        await update.effective_message.reply_text(msg)
         return
 
-    lines = ["🏆 <b>Твой прогресс по «150 лучшим аниме»:</b>"]
+    lines = ["🏆 <b>Твой прогресс по «150 лучшим аниме» (только Просмотрено):</b>"]
     for tid in watched:
-        t = next((t for t in TITLES if t["id"] == tid), None)
+        t = by_id.get(tid)
         if t:
             lines.append(f"• <b>{t['name']}</b> — <code>/title {t['id']}</code>")
         else:
@@ -1366,8 +1498,7 @@ async def handle_watched_list(update: Update, context: ContextTypes.DEFAULT_TYPE
         percent = round(len(watched) / total_top150 * 100, 1)
         lines.append(f"\nПрогресс: <b>{len(watched)}/{total_top150}</b> ({percent}%)")
 
-    text = "\n".join(lines)
-    await send_with_cleanup(update, context, text)
+    await send_with_cleanup(update, context, "\n".join(lines))
 
 
 def weekly_rank(diff):
@@ -1385,9 +1516,10 @@ def weekly_rank(diff):
 
 
 async def handle_weekly(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
+
     user_id = update.effective_user.id
     tg_user = update.effective_user
     user = get_user(data, user_id)
@@ -1401,9 +1533,9 @@ async def handle_weekly(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if diff <= 0:
         msg = (
             "🏆 Еженедельный прогресс по «150 лучшим аниме»\n\n"
-            "За эту неделю ты не добавил новых тайтлов в список 150.\n"
+            "За эту неделю ты не отметил новых тайтлов как <b>Просмотрено</b>.\n"
             f"Текущий ранг: <b>{rank}</b>.\n\n"
-            "Добавь хотя бы один тайтл и попробуй ещё раз позже."
+            "Открой тайтл из 150 и нажми «✅ Просмотрено»."
         )
     else:
         if next_target > 0 and next_target > diff:
@@ -1413,19 +1545,19 @@ async def handle_weekly(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             msg_next = "Ты на максимальном уровне этой недели. Жёстко."
         msg = (
             "🏆 Еженедельный прогресс по «150 лучшим аниме»\n\n"
-            f"За эту неделю ты посмотрел и отметил <b>{diff}</b> новых тайтл(ов) из постера 150.\n"
+            f"За эту неделю ты отметил <b>{diff}</b> новых тайтл(ов) как <b>Просмотрено</b>.\n"
             f"Текущий ранг: <b>{rank}</b>.\n\n"
             f"{msg_next}\n\n"
             f"Всего в прогрессе 150 сейчас: <b>{total}</b>."
         )
 
     user["weekly_150_start"] = total
-    save_data(data)
-    await send_with_cleanup(update, context, msg)
+    await save_data(data)
+    await update.effective_message.reply_text(msg)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
 
@@ -1447,19 +1579,16 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "• <code>/weekly</code> – недельный прогресс по 150\n\n"
             "⭐ <b>Избранное и 150 лучших</b>\n"
             "• <code>/favorites</code> – избранные тайтлы\n"
-            "• <code>/watched_add id</code> – добавить в «150 лучших»\n"
-            "• <code>/watched_remove id</code> – убрать из «150 лучших»\n"
             "• <code>/watched_list</code> – мой прогресс 150\n\n"
             "👥 <b>Друзья</b>\n"
             "• <code>/friend_invite</code> – добавить друга\n"
-            "  ↳ по ответу на сообщение, @username, ссылке или ID\n"
             "• <code>/invite_friend</code> – выдать приглашение уровня friend\n"
             "• <code>/friend_requests</code> – входящие заявки\n"
             "• <code>/friend_accept ID</code> – принять заявку\n"
             "• <code>/friend_list</code> – список друзей\n"
             "• <code>/friend_vs ID</code> – сравнить прогресс\n\n"
             "📨 <b>Обратная связь</b>\n"
-            "• <code>/suggest текст</code> – отправить предложение/фидбек админам\n\n"
+            "• <code>/suggest текст</code> – отправить предложение админам\n\n"
             "📨 <b>Посты и канал</b>\n"
             "• <code>/post</code> – мастер поста в канал\n"
             "• <code>/post_draft</code> – черновик с подтверждением\n"
@@ -1487,88 +1616,103 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "• <code>/myid</code> – мой Telegram ID\n"
             "• <code>/title id</code> – карточка тайтла\n"
             "• <code>/search текст</code> – поиск по постам и тайтлам\n"
-            "• <code>/code код</code> – ввести код доступа (если есть)\n"
             "• <code>/weekly</code> – мой недельный прогресс по 150\n\n"
             "⭐ <b>Избранное и «150 лучших»</b>\n"
             "• <code>/favorites</code> – мои избранные тайтлы\n"
-            "• <code>/watched_add id</code> – добавить тайтл в прогресс 150\n"
-            "• <code>/watched_remove id</code> – убрать тайтл из прогресса 150\n"
-            "• <code>/watched_list</code> – показать мой прогресс 150\n\n"
+            "• <code>/watched_list</code> – мой прогресс 150 (только Просмотрено)\n\n"
             "👥 <b>Друзья</b>\n"
             "• <code>/friend_invite</code> – добавить друга\n"
-            "  ↳ по ответу на сообщение, @username, ссылке или ID\n"
             "• <code>/invite_friend</code> – выдать другу ссылку-приглашение (уровень friend)\n"
-            "• <code>/friend_requests</code> – входящие заявки в друзья\n"
+            "• <code>/friend_requests</code> – входящие заявки\n"
             "• <code>/friend_accept ID</code> – принять заявку\n"
             "• <code>/friend_list</code> – список друзей\n"
             "• <code>/friend_vs ID</code> – сравнить прогресс по аниме\n\n"
             "📨 <b>Обратная связь</b>\n"
-            "• <code>/suggest текст</code> – предложить тайтл или идею для канала\n\n"
-            "Навигация по аниме — через кнопки под сообщениями: тайтлы, популярное, 150 лучших, полнометражки."
+            "• <code>/suggest текст</code> – предложить тайтл или идею\n\n"
+            "В карточке тайтла есть кнопки статусов:\n"
+            "📌 В планах · 👀 Смотрю · ✅ Просмотрено · ⛔ Забросил\n"
         )
 
-    await send_with_cleanup(update, context, text)
+    await update.effective_message.reply_text(text)
 
 
 async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
+
     user_id = update.effective_user.id
     tg_user = update.effective_user
     user_data = get_user(data, user_id)
     update_user_names(data, user_id, tg_user)
 
     if not context.args:
-        await send_with_cleanup(update, context, "Использование:\n<code>/title solo_leveling</code>")
+        await update.effective_message.reply_text("Использование:\n<code>/title solo_leveling</code>")
         return
 
     tid = context.args[0].strip().lower()
-    title = next((t for t in TITLES if t["id"] == tid), None)
+    await load_titles()
+    title = TITLES_BY_ID.get(tid)
     if not title:
-        await send_with_cleanup(update, context, "❌ Тайтл с таким ID не найден.")
+        await update.effective_message.reply_text("❌ Тайтл с таким ID не найден.")
         return
 
     required = title.get("min_access", "free")
     if not has_access(user_data, required):
-        await send_with_cleanup(
-            update,
-            context,
+        await update.effective_message.reply_text(
             "🔑 Этот тайтл доступен не для всех.\n\n"
             f"Нужен уровень: <b>{required}</b>\n"
             f"Твой уровень сейчас: <b>{user_data.get('access', 'free')}</b>\n\n"
             "Если у тебя есть код доступа, введи его командой:\n"
-            "<code>/code код</code>",
+            "<code>/code код</code>"
         )
         return
 
-    card = build_premium_card(title)
-    kb = build_title_keyboard(title["id"], user_data)
-    await send_with_cleanup(update, context, card, reply_markup=kb)
+    sync_watched_150_rule_b(user_data, title)
+    await save_data(data)
+
+    card = build_premium_card(title, user_data=user_data)
+    kb = build_title_keyboard(title, user_data)
+    await update.effective_message.reply_text(card, reply_markup=kb)
+
+
+def parse_search_filters(raw: str) -> tuple[str, dict]:
+    raw = raw.strip()
+    tokens = raw.split()
+    filters_out = {}
+    qparts = []
+    for t in tokens:
+        if ":" in t:
+            k, v = t.split(":", 1)
+            k = k.strip().lower()
+            v = v.strip()
+            if k and v:
+                filters_out[k] = v
+        else:
+            qparts.append(t)
+    return " ".join(qparts).strip().lower(), filters_out
 
 
 async def handle_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
 
     if not context.args:
-        await send_with_cleanup(update, context, "Использование:\n<code>/search гуррен-лаганн</code>")
+        await update.effective_message.reply_text("Использование:\n<code>/search гуррен-лаганн</code>")
         return
 
-    query = " ".join(context.args).strip().lower()
+    raw = " ".join(context.args).strip()
+    query, flt = parse_search_filters(raw)
     base_link = f"https://t.me/{CHANNEL_USERNAME.lstrip('@')}"
 
     posts = data.get("posts", {})
     post_matches = []
-    for mid, info in posts.items():
-        cap = (info.get("caption") or "")
-        if query in cap.lower():
-            try:
+    if query:
+        for mid, info in posts.items():
+            cap = (info.get("caption") or "")
+            if query in cap.lower():
                 post_matches.append((int(mid), cap))
-            except Exception:
-                pass
-
     if post_matches:
         post_matches.sort(key=lambda x: x[0])
         lines = ["🔎 <b>Найденные посты в канале:</b>"]
@@ -1578,35 +1722,73 @@ async def handle_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 first_line = first_line[:47] + "..."
             url = f"{base_link}/{mid}"
             lines.append(f"• <a href='{url}'>{first_line}</a>")
-        await send_with_cleanup(update, context, "\n".join(lines))
+        await update.effective_message.reply_text("\n".join(lines))
         return
 
+    titles = await load_titles()
     results = []
-    for t in TITLES:
-        name = t.get("name", "").lower()
-        tid = t.get("id", "").lower()
-        if query in name or query in tid:
+
+    for t in titles:
+        name = (t.get("name") or "").lower()
+        tid = (t.get("id") or "").lower()
+        studio = (t.get("studio") or "").lower()
+        year = (t.get("year") or "").lower()
+        status = (t.get("status") or "").lower()
+        genres = (t.get("genres") or "").lower()
+
+        ok = True
+        if query:
+            if query not in name and query not in tid:
+                ok = False
+
+        if ok and "studio" in flt:
+            if flt["studio"].lower() not in studio:
+                ok = False
+        if ok and "year" in flt:
+            if flt["year"].lower() not in year:
+                ok = False
+        if ok and "status" in flt:
+            if flt["status"].lower() not in status:
+                ok = False
+        if ok and "genre" in flt:
+            if flt["genre"].lower() not in genres:
+                ok = False
+
+        if ok:
             results.append(t)
 
     if not results:
-        await send_with_cleanup(update, context, "Ничего не найдено по этому запросу.")
+        await update.effective_message.reply_text("Ничего не найдено по этому запросу.")
         return
 
     if len(results) == 1:
+        user_data = get_user(data, update.effective_user.id)
         t = results[0]
-        card = build_premium_card(t)
-        kb = build_title_keyboard(t["id"], get_user(data, update.effective_user.id))
-        await send_with_cleanup(update, context, card, reply_markup=kb)
+        sync_watched_150_rule_b(user_data, t)
+        await save_data(data)
+        card = build_premium_card(t, user_data=user_data)
+        kb = build_title_keyboard(t, user_data)
+        await update.effective_message.reply_text(card, reply_markup=kb)
         return
 
     lines = ["🔎 <b>Найденные тайтлы:</b>"]
     for t in results[:20]:
-        lines.append(f"• <b>{t['name']}</b> — <code>/title {t['id']}</code>")
-    await send_with_cleanup(update, context, "\n".join(lines))
+        extra = ""
+        if t.get("top150"):
+            p = t.get("top150_poster_pos")
+            m = t.get("top150_merged_pos")
+            if p and m:
+                extra = f" (🏆 📜#{p} · ⭐#{m})"
+            elif p:
+                extra = f" (🏆 📜#{p})"
+            elif m:
+                extra = f" (🏆 ⭐#{m})"
+        lines.append(f"• <b>{t['name']}</b>{extra} — <code>/title {t['id']}</code>")
+    await update.effective_message.reply_text("\n".join(lines))
 
 
 async def handle_myid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
@@ -1615,17 +1797,17 @@ async def handle_myid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         "Отправь его другу, чтобы он смог добавить тебя в друзья через:\n"
         "<code>/friend_invite ID</code>"
     )
-    await send_with_cleanup(update, context, text)
+    await update.effective_message.reply_text(text)
 
 
 async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
 
     from_id = update.effective_user.id
     if check_rate_limit(from_id, "friend_invite", 2.0):
-        await send_with_cleanup(update, context, "Слишком часто отправляешь приглашения, попробуй позже.")
+        await update.effective_message.reply_text("Слишком часто отправляешь приглашения, попробуй позже.")
         return
 
     tg_user = update.effective_user
@@ -1640,16 +1822,14 @@ async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYP
 
     if target_id is None:
         if not context.args:
-            await send_with_cleanup(
-                update,
-                context,
+            await update.effective_message.reply_text(
                 "Как добавить друга:\n\n"
                 "• Ответь на его сообщение и напиши: <code>/friend_invite</code>\n"
                 "• Или: <code>/friend_invite @username</code>\n"
                 "• Или: <code>/friend_invite ссылка_на_профиль</code>\n"
                 "  (например, <code>https://t.me/username</code>)\n"
                 "• Или: <code>/friend_invite ID</code>\n\n"
-                "ID друг может узнать командой <code>/myid</code> у себя.",
+                "ID друг может узнать командой <code>/myid</code> у себя."
             )
             return
 
@@ -1672,18 +1852,16 @@ async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYP
                 chat = await context.bot.get_chat(f"@{token}")
                 target_id = chat.id
             except Exception:
-                await send_with_cleanup(
-                    update,
-                    context,
+                await update.effective_message.reply_text(
                     "Не удалось найти пользователя по этому username/ссылке.\n\n"
                     "Убедись, что:\n"
                     "• друг уже писал этому боту\n"
-                    "• указан корректный @username или ссылка вида <code>https://t.me/username</code>",
+                    "• указан корректный @username или ссылка вида <code>https://t.me/username</code>"
                 )
                 return
 
     if target_id == from_id:
-        await send_with_cleanup(update, context, "Нельзя добавить в друзья самого себя.")
+        await update.effective_message.reply_text("Нельзя добавить в друзья самого себя.")
         return
 
     get_user(data, target_id)
@@ -1692,25 +1870,23 @@ async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYP
     target_uid = str(target_id)
 
     if target_uid in from_user.get("friends", []):
-        await send_with_cleanup(update, context, "Этот пользователь уже есть у тебя в друзьях.")
+        await update.effective_message.reply_text("Этот пользователь уже есть у тебя в друзьях.")
         return
 
     reqs = data.get("friend_requests", {})
     lst = reqs.get(target_uid, [])
     if from_uid in lst:
-        await send_with_cleanup(update, context, "Приглашение этому пользователю уже отправлено.")
+        await update.effective_message.reply_text("Приглашение этому пользователю уже отправлено.")
         return
 
     lst.append(from_uid)
     reqs[target_uid] = lst
     data["friend_requests"] = reqs
-    save_data(data)
+    await save_data(data)
 
-    await send_with_cleanup(
-        update,
-        context,
+    await update.effective_message.reply_text(
         "✅ Приглашение в друзья отправлено.\n"
-        "Скажи другу запустить бота и набрать <code>/friend_requests</code>, чтобы принять.",
+        "Скажи другу запустить бота и набрать <code>/friend_requests</code>, чтобы принять."
     )
 
     try:
@@ -1729,18 +1905,18 @@ async def handle_friend_invite(update: Update, context: ContextTypes.DEFAULT_TYP
 
 
 async def handle_invite_friend(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
 
     from_id = update.effective_user.id
     user = get_user(data, from_id)
     if not user.get("activated"):
-        await send_with_cleanup(update, context, "Сначала активируй профиль через /start, а потом создавай приглашения.")
+        await update.effective_message.reply_text("Сначала активируй профиль через /start, а потом создавай приглашения.")
         return
 
     if check_rate_limit(from_id, "invite_friend", 5.0):
-        await send_with_cleanup(update, context, "Слишком часто создаёшь приглашения, попробуй чуть позже.")
+        await update.effective_message.reply_text("Слишком часто создаёшь приглашения, попробуй чуть позже.")
         return
 
     invites = data.get("invites", {})
@@ -1758,59 +1934,54 @@ async def handle_invite_friend(update: Update, context: ContextTypes.DEFAULT_TYP
         "max_uses": 5,
     }
     data["invites"] = invites
-    save_data(data)
+    await save_data(data)
 
     bot_username = context.bot.username
     link = f"https://t.me/{bot_username}?start={token}"
 
-    await send_with_cleanup(
-        update,
-        context,
+    await update.effective_message.reply_text(
         "🎁 Приглашение уровня <b>friend</b> создано.\n\n"
         "Отправь эту ссылку другу. Когда он зайдёт через неё и нажмёт /start,\n"
         "его профиль автоматически активируется с уровнем доступа <b>friend</b>.\n\n"
         f"Ссылка:\n<code>{link}</code>\n\n"
-        "Лимит: до 5 использований.",
+        "Лимит: до 5 использований."
     )
 
 
 async def handle_friend_requests(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
     uid = str(user_id)
     reqs = data.get("friend_requests", {}).get(uid, [])
     if not reqs:
-        await send_with_cleanup(update, context, "У тебя нет входящих приглашений в друзья.")
+        await update.effective_message.reply_text("У тебя нет входящих приглашений в друзья.")
         return
 
     lines = ["📨 <b>Входящие приглашения в друзья:</b>"]
     for rid in reqs:
         lines.append(f"• <a href='tg://user?id={rid}'>Пользователь {rid}</a> — принять: <code>/friend_accept {rid}</code>")
-    text = "\n".join(lines)
-    await send_with_cleanup(update, context, text)
+    await send_with_cleanup(update, context, "\n".join(lines))
 
 
 async def handle_friend_accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
     uid = str(user_id)
 
     if not context.args:
-        await send_with_cleanup(
-            update,
-            context,
+        await update.effective_message.reply_text(
             "Использование:\n<code>/friend_accept ID</code>\n\n"
-            "Посмотри список входящих заявок: <code>/friend_requests</code>",
+            "Посмотри список входящих заявок: <code>/friend_requests</code>"
         )
         return
     try:
         other_id = int(context.args[0])
     except ValueError:
-        await send_with_cleanup(update, context, "ID должен быть числом.")
+        await update.effective_message.reply_text("ID должен быть числом.")
         return
 
     other_uid = str(other_id)
@@ -1818,7 +1989,7 @@ async def handle_friend_accept(update: Update, context: ContextTypes.DEFAULT_TYP
     lst = reqs.get(uid, [])
 
     if other_uid not in lst:
-        await send_with_cleanup(update, context, "От этого пользователя нет активного приглашения.")
+        await update.effective_message.reply_text("От этого пользователя нет активного приглашения.")
         return
 
     user_data = get_user(data, user_id)
@@ -1836,18 +2007,16 @@ async def handle_friend_accept(update: Update, context: ContextTypes.DEFAULT_TYP
         reqs.pop(uid, None)
     data["friend_requests"] = reqs
 
-    save_data(data)
+    await save_data(data)
 
-    await send_with_cleanup(
-        update,
-        context,
+    await update.effective_message.reply_text(
         f"✅ Пользователь {other_id} добавлен в друзья.\n"
-        f"Теперь вы можете сравнивать прогресс по аниме: <code>/friend_vs {other_id}</code>",
+        f"Теперь вы можете сравнивать прогресс по аниме: <code>/friend_vs {other_id}</code>"
     )
 
 
 async def handle_friend_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
@@ -1857,11 +2026,9 @@ async def handle_friend_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     friends = user_data.get("friends", [])
     if not friends:
-        await send_with_cleanup(
-            update,
-            context,
+        await update.effective_message.reply_text(
             "У тебя пока нет друзей в боте.\n"
-            "Отправь свой ID (<code>/myid</code>) другу и пусть он добавит тебя через <code>/friend_invite</code>.",
+            "Отправь свой ID (<code>/myid</code>) другу и пусть он добавит тебя через <code>/friend_invite</code>."
         )
         return
 
@@ -1871,27 +2038,24 @@ async def handle_friend_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
         name = fdata.get("full_name") or f"Пользователь {fid}"
         lines.append(f"• <a href='tg://user?id={fid}'>{name}</a>")
     lines.append("\nЧтобы сравнить прогресс, используй:\n<code>/friend_vs ID_друга</code>")
-    text = "\n".join(lines)
-    await send_with_cleanup(update, context, text)
+    await send_with_cleanup(update, context, "\n".join(lines))
 
 
 async def handle_friend_vs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
     if not context.args:
-        await send_with_cleanup(
-            update,
-            context,
+        await update.effective_message.reply_text(
             "Использование:\n<code>/friend_vs ID_друга</code>\n\n"
-            "Сначала посмотри список друзей: <code>/friend_list</code>",
+            "Сначала посмотри список друзей: <code>/friend_list</code>"
         )
         return
     try:
         other_id = int(context.args[0])
     except ValueError:
-        await send_with_cleanup(update, context, "ID должен быть числом.")
+        await update.effective_message.reply_text("ID должен быть числом.")
         return
 
     uid = str(user_id)
@@ -1901,12 +2065,7 @@ async def handle_friend_vs(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     other_data = get_user(data, other_id)
 
     if other_uid not in user_data.get("friends", []):
-        await send_with_cleanup(
-            update,
-            context,
-            "Этот пользователь не в твоих друзьях.\n"
-            "Сначала добавь его через систему заявок.",
-        )
+        await update.effective_message.reply_text("Этот пользователь не в твоих друзьях.\nСначала добавь его через систему заявок.")
         return
 
     u_fav = len(user_data.get("favorites", []))
@@ -1932,47 +2091,33 @@ async def handle_friend_vs(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         "⚔ <b>Сравнение аниме-прогресса</b>\n\n"
         f"Ты:\n"
         f"• Избранных тайтлов: <b>{u_fav}</b>\n"
-        f"• Из «150 лучших аниме»: <b>{u_150}</b>\n\n"
+        f"• Из «150 лучших аниме» (Просмотрено): <b>{u_150}</b>\n\n"
         f"Друг ({other_id}):\n"
         f"• Избранных тайтлов: <b>{o_fav}</b>\n"
-        f"• Из «150 лучших аниме»: <b>{o_150}</b>\n\n"
+        f"• Из «150 лучших аниме» (Просмотрено): <b>{o_150}</b>\n\n"
         f"{fav_result}\n"
         f"{top_result}"
     )
     await send_with_cleanup(update, context, text)
 
 
-async def handle_favorites_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await handle_favorites(update, context)
-
-
-async def handle_top150_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await handle_watched_list(update, context)
-
-
-async def handle_friends_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await handle_friend_list(update, context)
-
-
 async def handle_suggest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
     user = update.effective_user
     uid = user.id
 
     if not context.args:
-        await send_with_cleanup(
-            update,
-            context,
+        await update.effective_message.reply_text(
             "Отправь предложение или идею в формате:\n"
-            "<code>/suggest хочу увидеть вот такой тайтл...</code>",
+            "<code>/suggest хочу увидеть вот такой тайтл...</code>"
         )
         return
 
     text = " ".join(context.args).strip()
     if not text:
-        await send_with_cleanup(update, context, "Текст предложения пустой.")
+        await update.effective_message.reply_text("Текст предложения пустой.")
         return
 
     admins_all = set(ADMINS) | set(data.get("admins", []))
@@ -1990,63 +2135,63 @@ async def handle_suggest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         except Exception:
             pass
 
-    await send_with_cleanup(update, context, "Спасибо! Твоё предложение отправлено админам.")
+    await update.effective_message.reply_text("Спасибо! Твоё предложение отправлено админам.")
 
 
 async def handle_ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     user_id = update.effective_user.id
     if not is_admin(data, user_id):
-        await send_with_cleanup(update, context, "Эта команда только для админа.")
+        await update.effective_message.reply_text("Эта команда только для админа.")
         return
     if not context.args:
-        await send_with_cleanup(update, context, "Использование:\n<code>/ban_user ID</code>")
+        await update.effective_message.reply_text("Использование:\n<code>/ban_user ID</code>")
         return
     try:
         target_id = int(context.args[0])
     except ValueError:
-        await send_with_cleanup(update, context, "ID должен быть числом.")
+        await update.effective_message.reply_text("ID должен быть числом.")
         return
     tid = str(target_id)
     banned = data.get("banned", {})
     banned[tid] = True
     data["banned"] = banned
-    save_data(data)
-    await send_with_cleanup(update, context, f"Пользователь {target_id} заблокирован в боте.")
+    await save_data(data)
+    await update.effective_message.reply_text(f"Пользователь {target_id} заблокирован в боте.")
 
 
 async def handle_unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     user_id = update.effective_user.id
     if not is_admin(data, user_id):
-        await send_with_cleanup(update, context, "Эта команда только для админа.")
+        await update.effective_message.reply_text("Эта команда только для админа.")
         return
     if not context.args:
-        await send_with_cleanup(update, context, "Использование:\n<code>/unban_user ID</code>")
+        await update.effective_message.reply_text("Использование:\n<code>/unban_user ID</code>")
         return
     try:
         target_id = int(context.args[0])
     except ValueError:
-        await send_with_cleanup(update, context, "ID должен быть числом.")
+        await update.effective_message.reply_text("ID должен быть числом.")
         return
     tid = str(target_id)
     banned = data.get("banned", {})
     if tid in banned:
         banned.pop(tid, None)
         data["banned"] = banned
-        save_data(data)
-        await send_with_cleanup(update, context, f"Пользователь {target_id} разблокирован.")
+        await save_data(data)
+        await update.effective_message.reply_text(f"Пользователь {target_id} разблокирован.")
     else:
-        await send_with_cleanup(update, context, "Этот пользователь не был заблокирован.")
+        await update.effective_message.reply_text("Этот пользователь не был заблокирован.")
 
 
 async def handle_admin_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
     if not is_admin(data, user_id):
-        await send_with_cleanup(update, context, "Эта команда только для админов.")
+        await update.effective_message.reply_text("Эта команда только для админов.")
         return
 
     admins_file = set(data.get("admins", []))
@@ -2057,74 +2202,74 @@ async def handle_admin_list(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     for aid in all_admins:
         mark = " (root)" if aid in base_admins else ""
         lines.append(f"• <a href='tg://user?id={aid}'>{aid}</a>{mark}")
-    text = "\n".join(lines)
-    await send_with_cleanup(update, context, text)
+    await send_with_cleanup(update, context, "\n".join(lines))
 
 
 async def handle_add_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
     if not is_root_admin(user_id):
-        await send_with_cleanup(update, context, "Добавлять админов может только корневой админ.")
+        await update.effective_message.reply_text("Добавлять админов может только корневой админ.")
         return
     if not context.args:
-        await send_with_cleanup(update, context, "Использование:\n<code>/add_admin ID</code>")
+        await update.effective_message.reply_text("Использование:\n<code>/add_admin ID</code>")
         return
     try:
         target_id = int(context.args[0])
     except ValueError:
-        await send_with_cleanup(update, context, "ID должен быть числом.")
+        await update.effective_message.reply_text("ID должен быть числом.")
         return
 
     admins_list = data.get("admins", [])
     if target_id in admins_list or target_id in ADMINS:
-        await send_with_cleanup(update, context, "Этот пользователь уже админ.")
+        await update.effective_message.reply_text("Этот пользователь уже админ.")
         return
 
     admins_list.append(target_id)
     data["admins"] = admins_list
-    save_data(data)
-    await send_with_cleanup(update, context, f"Пользователь {target_id} добавлен в админы.")
+    await save_data(data)
+    await update.effective_message.reply_text(f"Пользователь {target_id} добавлен в админы.")
 
 
 async def handle_remove_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
     if not is_root_admin(user_id):
-        await send_with_cleanup(update, context, "Удалять админов может только корневой админ.")
+        await update.effective_message.reply_text("Удалять админов может только корневой админ.")
         return
     if not context.args:
-        await send_with_cleanup(update, context, "Использование:\n<code>/remove_admin ID</code>")
+        await update.effective_message.reply_text("Использование:\n<code>/remove_admin ID</code>")
         return
     try:
         target_id = int(context.args[0])
     except ValueError:
-        await send_with_cleanup(update, context, "ID должен быть числом.")
+        await update.effective_message.reply_text("ID должен быть числом.")
         return
 
     if target_id in ADMINS:
-        await send_with_cleanup(update, context, "Нельзя удалить корневого админа из CONFIG.")
+        await update.effective_message.reply_text("Нельзя удалить корневого админа из CONFIG.")
         return
 
     admins_list = data.get("admins", [])
     if target_id not in admins_list:
-        await send_with_cleanup(update, context, "Этот пользователь не является админом (или является root через CONFIG).")
+        await update.effective_message.reply_text("Этот пользователь не является админом (или является root через CONFIG).")
         return
 
     admins_list = [a for a in admins_list if a != target_id]
     data["admins"] = admins_list
-    save_data(data)
-    await send_with_cleanup(update, context, f"Пользователь {target_id} убран из админов.")
+    await save_data(data)
+    await update.effective_message.reply_text(f"Пользователь {target_id} убран из админов.")
 
 
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
+
     query = update.callback_query
     await query.answer()
     data_str = query.data
@@ -2133,40 +2278,21 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     tg_user = update.effective_user
     user_data = get_user(data, user_id)
     update_user_names(data, user_id, tg_user)
-    save_data(data)
 
-    if data_str == "activate_profile":
-        user_data["activated"] = True
-        save_data(data)
-        text = (
-            "⚡ Профиль активирован!\n\n"
-            f"Твой Telegram ID: <code>{user_id}</code>\n\n"
-            "Теперь ты можешь:\n"
-            "• Добавлять друзей через /friend_invite\n"
-            "• Смотреть входящие заявки: /friend_requests\n"
-            "• Список друзей: /friend_list\n\n"
-            "Нажми кнопку ниже, чтобы открыть главное меню."
-        )
-        kb = InlineKeyboardMarkup([[InlineKeyboardButton("📚 Открыть главное меню", callback_data="main_menu")]])
-        await query.edit_message_text(text, reply_markup=kb)
-        return
+    await load_titles()
 
     if data_str == "verify_sub":
         subscribed = await is_subscribed(context, user_id)
         if subscribed:
             user_data["activated"] = True
-            save_data(data)
+            await save_data(data)
             kb = InlineKeyboardMarkup([[InlineKeyboardButton("📚 Открыть главное меню", callback_data="main_menu")]])
             await query.edit_message_text(
-                "✅ Подписка подтверждена, профиль активирован.\n\n"
-                "Теперь можно пользоваться навигацией и сохранять прогресс.",
+                "✅ Подписка подтверждена, профиль активирован.\n\nТеперь можно пользоваться навигацией и сохранять прогресс.",
                 reply_markup=kb,
             )
         else:
-            await query.message.reply_text(
-                "Я пока не вижу подписку на канал.\n\n"
-                "Подпишись на AnimeHUB | Dream, подожди пару секунд и нажми кнопку ещё раз."
-            )
+            await query.message.reply_text("Я пока не вижу подписку на канал.\n\nПодпишись, подожди пару секунд и нажми кнопку ещё раз.")
         return
 
     if data_str == "main_menu":
@@ -2208,44 +2334,6 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await handle_friend_list(update, context)
         return
 
-    if data_str == "draft_publish":
-        draft = context.user_data.get("draft_post")
-        if not draft:
-            await query.edit_message_text("Черновик не найден. Попробуй создать его заново через /post_draft.")
-            return
-        data = load_data()
-        global HEAVY_ACTIVE, HEAVY_MAX
-        if HEAVY_ACTIVE >= HEAVY_MAX:
-            await query.edit_message_text("Слишком много тяжёлых операций, попробуй чуть позже.")
-            return
-        HEAVY_ACTIVE += 1
-        try:
-            m = await context.bot.send_photo(
-                chat_id=CHANNEL_USERNAME,
-                photo=draft["photo"],
-                caption=draft["caption"],
-                reply_markup=draft["reply_markup"],
-            )
-            data["stats"]["posts_created"] += 1
-            posts = data.get("posts", {})
-            posts[str(m.message_id)] = {
-                "title_id": draft.get("title_id"),
-                "created_at": int(time.time()),
-                "caption": draft.get("caption", ""),
-            }
-            data["posts"] = posts
-            save_data(data)
-            context.user_data.pop("draft_post", None)
-            await query.edit_message_text("Черновик опубликован в канал ✅")
-        finally:
-            HEAVY_ACTIVE -= 1
-        return
-
-    if data_str == "draft_cancel":
-        context.user_data.pop("draft_post", None)
-        await query.edit_message_text("Черновик отменён.")
-        return
-
     if data_str.startswith("top150_"):
         try:
             _, kind, _, page_str = data_str.split("_", 3)
@@ -2260,23 +2348,44 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     if data_str.startswith("fav_add:") or data_str.startswith("fav_remove:"):
-        action, title_id = data_str.split(":", 1)
+        action, tid = data_str.split(":", 1)
         favs = user_data.get("favorites", [])
+        if not isinstance(favs, list):
+            favs = []
         if action == "fav_add":
-            if title_id not in favs:
-                favs.append(title_id)
+            if tid not in favs:
+                favs.append(tid)
         else:
-            if title_id in favs:
-                favs.remove(title_id)
+            if tid in favs:
+                favs.remove(tid)
         user_data["favorites"] = favs
-        save_data(data)
-        title = next((t for t in TITLES if t["id"] == title_id), None)
+        title = TITLES_BY_ID.get(tid)
+        await save_data(data)
         if title:
-            text = f"⭐ {title['name']}\n\n{title['desc']}"
-            kb = build_title_keyboard(title_id, user_data)
-            await query.edit_message_text(text, reply_markup=kb)
+            card = build_premium_card(title, user_data=user_data)
+            kb = build_title_keyboard(title, user_data)
+            await query.edit_message_text(card, reply_markup=kb)
         else:
             await query.edit_message_text("Тайтл не найден.")
+        return
+
+    if data_str.startswith("st_set:"):
+        try:
+            _, tid, status = data_str.split(":", 2)
+        except ValueError:
+            return
+        title = TITLES_BY_ID.get(tid)
+        if not title:
+            await query.edit_message_text("Тайтл не найден.")
+            return
+
+        set_title_status(user_data, tid, status)
+        sync_watched_150_rule_b(user_data, title)
+        await save_data(data)
+
+        card = build_premium_card(title, user_data=user_data)
+        kb = build_title_keyboard(title, user_data)
+        await query.edit_message_text(card, reply_markup=kb)
         return
 
 
@@ -2285,16 +2394,16 @@ EDIT_PHOTO, EDIT_CAPTION, EDIT_DESC, EDIT_WATCH = range(4, 8)
 
 
 async def post_start_common(update: Update, context: ContextTypes.DEFAULT_TYPE, mode: str) -> int:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return ConversationHandler.END
     user_id = update.effective_user.id
     if not is_admin(data, user_id):
-        await send_with_cleanup(update, context, "Эта команда только для админа.")
+        await update.effective_message.reply_text("Эта команда только для админа.")
         return ConversationHandler.END
 
     if check_rate_limit(user_id, "post", 3.0):
-        await send_with_cleanup(update, context, "Слишком часто используешь эту команду, попробуй чуть позже.")
+        await update.effective_message.reply_text("Слишком часто используешь эту команду, попробуй чуть позже.")
         return ConversationHandler.END
 
     context.user_data["post_mode"] = mode
@@ -2302,11 +2411,9 @@ async def post_start_common(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     context.user_data.pop("post_caption", None)
     context.user_data.pop("post_desc_link", None)
 
-    await send_with_cleanup(
-        update,
-        context,
+    await update.effective_message.reply_text(
         "Шаг 1/4.\nОтправь обложку/превьюшку как фото.\n\n"
-        "Если передумал — напиши <code>/cancel</code>.",
+        "Если передумал — напиши <code>/cancel</code>."
     )
     return POST_PHOTO
 
@@ -2321,58 +2428,49 @@ async def post_start_draft(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 async def post_get_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not update.message.photo:
-        await send_with_cleanup(update, context, "Нужно отправить именно фото. Попробуй ещё раз.")
+        await update.effective_message.reply_text("Нужно отправить именно фото. Попробуй ещё раз.")
         return POST_PHOTO
 
     photo = update.message.photo[-1].file_id
     context.user_data["post_photo"] = photo
 
-    await send_with_cleanup(
-        update,
-        context,
+    await update.effective_message.reply_text(
         "Шаг 2/4.\nТеперь отправь текст карточки, который будет под обложкой.\n\n"
-        "Можешь сразу вставить готовый текст из шаблона.",
+        "Можешь сразу вставить готовый текст из шаблона."
     )
     return POST_CAPTION
 
 
 async def post_get_caption(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    text = update.message.text
-    context.user_data["post_caption"] = text
-
-    await send_with_cleanup(
-        update,
-        context,
+    context.user_data["post_caption"] = update.message.text or ""
+    await update.effective_message.reply_text(
         "Шаг 3/4.\nВставь ссылку на описание (Telegraph).\n"
-        "Если описания пока нет — напиши <code>-</code>.",
+        "Если описания пока нет — напиши <code>-</code>."
     )
     return POST_DESC
 
 
 async def post_get_desc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    desc_link = update.message.text.strip()
+    desc_link = (update.message.text or "").strip()
     if desc_link == "-":
         desc_link = None
-
     context.user_data["post_desc_link"] = desc_link
 
-    await send_with_cleanup(
-        update,
-        context,
+    await update.effective_message.reply_text(
         "Шаг 4/4.\nТеперь отправь ссылку, где смотреть аниме "
         "(приватный канал/плейлист).\n"
-        "Если кнопка «Смотреть» не нужна — напиши <code>-</code>.",
+        "Если кнопка «Смотреть» не нужна — напиши <code>-</code>."
     )
     return POST_WATCH
 
 
 async def post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return ConversationHandler.END
     mode = context.user_data.get("post_mode", "channel")
 
-    watch_link = update.message.text.strip()
+    watch_link = (update.message.text or "").strip()
     if watch_link == "-":
         watch_link = None
 
@@ -2389,7 +2487,7 @@ async def post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     global HEAVY_ACTIVE, HEAVY_MAX
     if HEAVY_ACTIVE >= HEAVY_MAX:
-        await send_with_cleanup(update, context, "Слишком много тяжёлых операций выполняется сейчас, попробуй чуть позже.")
+        await update.effective_message.reply_text("Слишком много тяжёлых операций выполняется сейчас, попробуй чуть позже.")
         return ConversationHandler.END
 
     HEAVY_ACTIVE += 1
@@ -2409,8 +2507,8 @@ async def post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 "caption": caption,
             }
             data["posts"] = posts
-            save_data(data)
-            await send_with_cleanup(update, context, "Пост отправлен в канал ✅")
+            await save_data(data)
+            await update.effective_message.reply_text("Пост отправлен в канал ✅")
         else:
             draft = {
                 "photo": photo,
@@ -2420,7 +2518,7 @@ async def post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             }
             context.user_data["draft_post"] = draft
             data["stats"]["drafts_created"] += 1
-            save_data(data)
+            await save_data(data)
 
             kb = InlineKeyboardMarkup(
                 [
@@ -2441,7 +2539,6 @@ async def post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     context.user_data.pop("post_caption", None)
     context.user_data.pop("post_desc_link", None)
     context.user_data.pop("post_mode", None)
-
     return ConversationHandler.END
 
 
@@ -2458,7 +2555,7 @@ async def post_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         "draft_post",
     ]:
         context.user_data.pop(key, None)
-    await send_with_cleanup(update, context, "Операция отменена.")
+    await update.effective_message.reply_text("Операция отменена.")
     return ConversationHandler.END
 
 
@@ -2480,37 +2577,35 @@ def parse_message_id(arg: str) -> int | None:
 
 
 async def edit_post_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return ConversationHandler.END
     user_id = update.effective_user.id
     if not is_admin(data, user_id):
-        await send_with_cleanup(update, context, "Эта команда только для админа.")
+        await update.effective_message.reply_text("Эта команда только для админа.")
         return ConversationHandler.END
 
     if check_rate_limit(user_id, "edit_post", 3.0):
-        await send_with_cleanup(update, context, "Слишком часто используешь эту команду, попробуй чуть позже.")
+        await update.effective_message.reply_text("Слишком часто используешь эту команду, попробуй чуть позже.")
         return ConversationHandler.END
 
     if not context.args:
-        await send_with_cleanup(update, context, "Использование:\n<code>/edit_post https://t.me/AnimeHUB_Dream/16</code>")
+        await update.effective_message.reply_text("Использование:\n<code>/edit_post https://t.me/AnimeHUB_Dream/16</code>")
         return ConversationHandler.END
 
     msg_id = parse_message_id(context.args[0])
     if msg_id is None:
-        await send_with_cleanup(update, context, "Не удалось понять ID сообщения. Проверь ссылку.")
+        await update.effective_message.reply_text("Не удалось понять ID сообщения. Проверь ссылку.")
         return ConversationHandler.END
 
     context.user_data["edit_msg_id"] = msg_id
 
-    await send_with_cleanup(
-        update,
-        context,
+    await update.effective_message.reply_text(
         f"Редактирование поста с ID <code>{msg_id}</code>.\n\n"
         "Шаг 1/4.\n"
         "Отправь новую обложку как фото, если хочешь заменить картинку.\n"
         "Если обложку менять не нужно — напиши <code>-</code>.\n\n"
-        "Если что, <code>/cancel</code> отменит операцию.",
+        "Если что, <code>/cancel</code> отменит операцию."
     )
     return EDIT_PHOTO
 
@@ -2524,23 +2619,20 @@ async def edit_post_get_photo(update: Update, context: ContextTypes.DEFAULT_TYPE
         if text == "-":
             context.user_data["edit_photo"] = None
         else:
-            await send_with_cleanup(update, context, "Отправь фото или напиши <code>-</code>, если не хочешь менять обложку.")
+            await update.effective_message.reply_text("Отправь фото или напиши <code>-</code>, если не хочешь менять обложку.")
             return EDIT_PHOTO
 
-    await send_with_cleanup(update, context, "Шаг 2/4.\nОтправь новый текст подписи для поста.")
+    await update.effective_message.reply_text("Шаг 2/4.\nОтправь новый текст подписи для поста.")
     return EDIT_CAPTION
 
 
 async def edit_post_get_caption(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     caption = update.message.text or ""
     context.user_data["edit_caption"] = caption.strip()
-
-    await send_with_cleanup(
-        update,
-        context,
+    await update.effective_message.reply_text(
         "Шаг 3/4.\n"
         "Отправь ссылку на описание (Telegraph).\n"
-        "Если описания не нужно — напиши <code>-</code>.",
+        "Если описания не нужно — напиши <code>-</code>."
     )
     return EDIT_DESC
 
@@ -2550,19 +2642,16 @@ async def edit_post_get_desc(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if desc_link == "-":
         desc_link = None
     context.user_data["edit_desc_link"] = desc_link
-
-    await send_with_cleanup(
-        update,
-        context,
+    await update.effective_message.reply_text(
         "Шаг 4/4.\n"
         "Отправь ссылку, где смотреть аниме (кнопка «Смотреть»).\n"
-        "Если кнопка не нужна — напиши <code>-</code>.",
+        "Если кнопка не нужна — напиши <code>-</code>."
     )
     return EDIT_WATCH
 
 
 async def edit_post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return ConversationHandler.END
     watch_link = (update.message.text or "").strip()
@@ -2583,7 +2672,7 @@ async def edit_post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     global HEAVY_ACTIVE, HEAVY_MAX
     if HEAVY_ACTIVE >= HEAVY_MAX:
-        await send_with_cleanup(update, context, "Слишком много тяжёлых операций выполняется сейчас, попробуй чуть позже.")
+        await update.effective_message.reply_text("Слишком много тяжёлых операций выполняется сейчас, попробуй чуть позже.")
         return ConversationHandler.END
 
     HEAVY_ACTIVE += 1
@@ -2606,13 +2695,11 @@ async def edit_post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE
                     parse_mode=ParseMode.HTML,
                 )
         except Exception as e:
-            await send_with_cleanup(
-                update,
-                context,
+            await update.effective_message.reply_text(
                 "Не удалось отредактировать пост. Возможные причины:\n"
                 "• Бот не является админом в канале\n"
                 "• Пост слишком старый или не создан этим ботом\n\n"
-                f"Техническая ошибка: {e}",
+                f"Техническая ошибка: {e}"
             )
             for key in ["edit_msg_id", "edit_photo", "edit_caption", "edit_desc_link"]:
                 context.user_data.pop(key, None)
@@ -2627,39 +2714,43 @@ async def edit_post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE
         data["posts"] = posts
 
         data["stats"]["posts_edited"] += 1
-        save_data(data)
+        await save_data(data)
 
         for key in ["edit_msg_id", "edit_photo", "edit_caption", "edit_desc_link"]:
             context.user_data.pop(key, None)
 
-        await send_with_cleanup(update, context, "Пост успешно отредактирован ✅")
+        await update.effective_message.reply_text("Пост успешно отредактирован ✅")
         return ConversationHandler.END
     finally:
         HEAVY_ACTIVE -= 1
 
 
 async def handle_link_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
     if not is_admin(data, user_id):
-        await send_with_cleanup(update, context, "Эта команда только для админа.")
+        await update.effective_message.reply_text("Эта команда только для админа.")
         return
 
     if len(context.args) < 2:
-        await send_with_cleanup(update, context, "Использование:\n<code>/link_post https://t.me/AnimeHUB_Dream/16 solo_leveling</code>")
+        await update.effective_message.reply_text(
+            "Использование:\n"
+            "<code>/link_post https://t.me/AnimeHUB_Dream/16 solo_leveling</code>"
+        )
         return
 
     msg_id = parse_message_id(context.args[0])
     if msg_id is None:
-        await send_with_cleanup(update, context, "Не удалось понять ID сообщения. Проверь ссылку.")
+        await update.effective_message.reply_text("Не удалось понять ID сообщения. Проверь ссылку.")
         return
 
     tid = context.args[1].strip().lower()
-    title = next((t for t in TITLES if t["id"] == tid), None)
+    await load_titles()
+    title = TITLES_BY_ID.get(tid)
     if not title:
-        await send_with_cleanup(update, context, "❌ Тайтл с таким ID не найден.")
+        await update.effective_message.reply_text("❌ Тайтл с таким ID не найден.")
         return
 
     posts = data.get("posts", {})
@@ -2669,36 +2760,36 @@ async def handle_link_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     info.setdefault("caption", None)
     posts[str(msg_id)] = info
     data["posts"] = posts
-    save_data(data)
+    await save_data(data)
 
-    await send_with_cleanup(update, context, f"Пост с ID <code>{msg_id}</code> привязан к тайтлу «{title['name']}».")
+    await update.effective_message.reply_text(f"Пост с ID <code>{msg_id}</code> привязан к тайтлу «{title['name']}».")
 
 
 async def handle_repost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = load_data()
+    data = await load_data()
     if await abort_if_banned(update, data):
         return
     user_id = update.effective_user.id
     if not is_admin(data, user_id):
-        await send_with_cleanup(update, context, "Эта команда только для админа.")
+        await update.effective_message.reply_text("Эта команда только для админа.")
         return
 
     if not context.args:
-        await send_with_cleanup(update, context, "Использование:\n<code>/repost https://t.me/AnimeHUB_Dream/16</code>")
+        await update.effective_message.reply_text("Использование:\n<code>/repost https://t.me/AnimeHUB_Dream/16</code>")
         return
 
     msg_id = parse_message_id(context.args[0])
     if msg_id is None:
-        await send_with_cleanup(update, context, "Не удалось понять ID сообщения. Проверь ссылку.")
+        await update.effective_message.reply_text("Не удалось понять ID сообщения. Проверь ссылку.")
         return
 
     if check_rate_limit(user_id, "repost", 3.0):
-        await send_with_cleanup(update, context, "Слишком часто используешь эту команду, попробуй чуть позже.")
+        await update.effective_message.reply_text("Слишком часто используешь эту команду, попробуй чуть позже.")
         return
 
     global HEAVY_ACTIVE, HEAVY_MAX
     if HEAVY_ACTIVE >= HEAVY_MAX:
-        await send_with_cleanup(update, context, "Слишком много тяжёлых операций выполняется сейчас, попробуй чуть позже.")
+        await update.effective_message.reply_text("Слишком много тяжёлых операций выполняется сейчас, попробуй чуть позже.")
         return
 
     HEAVY_ACTIVE += 1
@@ -2710,13 +2801,11 @@ async def handle_repost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 message_id=msg_id,
             )
         except Exception as e:
-            await send_with_cleanup(
-                update,
-                context,
+            await update.effective_message.reply_text(
                 "Не удалось пересоздать пост. Возможные причины:\n"
                 "• Бот не имеет доступа к этому сообщению\n"
                 "• Сообщение не найдено\n\n"
-                f"Техническая ошибка: {e}",
+                f"Техническая ошибка: {e}"
             )
             return
 
@@ -2730,9 +2819,9 @@ async def handle_repost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         data["stats"]["reposts"] += 1
         data["stats"]["posts_created"] += 1
         data["posts"] = posts
-        save_data(data)
+        await save_data(data)
 
-        await send_with_cleanup(update, context, f"Пост пересоздан в канале ✅\nНовый ID: <code>{m.message_id}</code>")
+        await update.effective_message.reply_text(f"Пост пересоздан в канале ✅\nНовый ID: <code>{m.message_id}</code>")
     finally:
         HEAVY_ACTIVE -= 1
 
@@ -2753,18 +2842,10 @@ def main() -> None:
             CommandHandler("post_draft", post_start_draft),
         ],
         states={
-            POST_PHOTO: [
-                MessageHandler(filters.PHOTO & ~filters.COMMAND, post_get_photo)
-            ],
-            POST_CAPTION: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, post_get_caption)
-            ],
-            POST_DESC: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, post_get_desc)
-            ],
-            POST_WATCH: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, post_get_watch)
-            ],
+            POST_PHOTO: [MessageHandler(filters.PHOTO & ~filters.COMMAND, post_get_photo)],
+            POST_CAPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, post_get_caption)],
+            POST_DESC: [MessageHandler(filters.TEXT & ~filters.COMMAND, post_get_desc)],
+            POST_WATCH: [MessageHandler(filters.TEXT & ~filters.COMMAND, post_get_watch)],
         },
         fallbacks=[CommandHandler("cancel", post_cancel)],
     )
@@ -2772,21 +2853,10 @@ def main() -> None:
     conv_edit = ConversationHandler(
         entry_points=[CommandHandler("edit_post", edit_post_start)],
         states={
-            EDIT_PHOTO: [
-                MessageHandler(
-                    (filters.PHOTO | filters.TEXT) & ~filters.COMMAND,
-                    edit_post_get_photo,
-                )
-            ],
-            EDIT_CAPTION: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, edit_post_get_caption)
-            ],
-            EDIT_DESC: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, edit_post_get_desc)
-            ],
-            EDIT_WATCH: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, edit_post_get_watch)
-            ],
+            EDIT_PHOTO: [MessageHandler((filters.PHOTO | filters.TEXT) & ~filters.COMMAND, edit_post_get_photo)],
+            EDIT_CAPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_post_get_caption)],
+            EDIT_DESC: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_post_get_desc)],
+            EDIT_WATCH: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_post_get_watch)],
         },
         fallbacks=[CommandHandler("cancel", post_cancel)],
     )
@@ -2800,8 +2870,6 @@ def main() -> None:
     application.add_handler(CommandHandler("code", handle_code))
     application.add_handler(CommandHandler("profile", handle_profile))
     application.add_handler(CommandHandler("favorites", handle_favorites))
-    application.add_handler(CommandHandler("watched_add", handle_watched_add))
-    application.add_handler(CommandHandler("watched_remove", handle_watched_remove))
     application.add_handler(CommandHandler("watched_list", handle_watched_list))
     application.add_handler(CommandHandler("weekly", handle_weekly))
     application.add_handler(CommandHandler("stats", handle_stats))
