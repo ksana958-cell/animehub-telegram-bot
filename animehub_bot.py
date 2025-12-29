@@ -794,7 +794,13 @@ async def render_hot_now(data, user_data):
         lines.append(f"• <b>{t['name']}</b> — <code>/title {t['id']}</code>")
     return "\n".join(lines)
 
-async def send_section(update: Update, context: ContextTypes.DEFAULT_TYPE, data, section_key: str, from_callback: bool) -> None:
+async def send_section(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    data,
+    section_key: str,
+    from_callback: bool,
+) -> None:
     user_id = update.effective_user.id
     tg_user = update.effective_user
     user_data = get_user(data, user_id)
@@ -809,8 +815,10 @@ async def send_section(update: Update, context: ContextTypes.DEFAULT_TYPE, data,
             "Если у тебя есть код доступа, введи его командой:\n"
             "/code &lt;код&gt;"
         )
-        kb = InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Главное меню", callback_data="main_menu")]])
-        if from_callback:
+        kb = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("⬅️ Главное меню", callback_data="main_menu")]]
+        )
+        if from_callback and update.callback_query:
             await update.callback_query.edit_message_text(text, reply_markup=kb)
         else:
             await update.effective_message.reply_text(text, reply_markup=kb)
@@ -838,7 +846,7 @@ async def send_section(update: Update, context: ContextTypes.DEFAULT_TYPE, data,
                     [InlineKeyboardButton("⬅️ Главное меню", callback_data="main_menu")],
                 ]
             )
-            if from_callback:
+            if from_callback and update.callback_query:
                 await update.callback_query.edit_message_text(text, reply_markup=kb)
             else:
                 await update.effective_message.reply_text(text, reply_markup=kb)
@@ -858,10 +866,19 @@ async def send_section(update: Update, context: ContextTypes.DEFAULT_TYPE, data,
                 [InlineKeyboardButton("⬅️ Главное меню", callback_data="main_menu")],
             ]
         )
-        if from_callback:
+        if from_callback and update.callback_query:
             await update.callback_query.edit_message_text(text, reply_markup=kb)
         else:
             await update.effective_message.reply_text(text, reply_markup=kb)
+        return
+
+    text = SECTION_TEXTS.get(section_key, "Раздел пока пуст.")
+    kb = build_section_keyboard(section_key)
+
+    if from_callback and update.callback_query:
+        await update.callback_query.edit_message_text(text, reply_markup=kb)
+    else:
+        await send_with_cleanup(update, context, text, reply_markup=kb)
         return
 
     if section_key == "hot_now":
@@ -1283,6 +1300,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     data = load_data()
     if await abort_if_banned(update, data):
         return
+
     user_id = update.effective_user.id
     is_admin_user = is_admin(data, user_id)
 
@@ -1304,8 +1322,30 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "• <code>/watched_add id</code> – добавить в «150 лучших»\n"
             "• <code>/watched_remove id</code> – убрать из «150 лучших»\n"
             "• <code>/watched_list</code> – мой прогресс 150\n\n"
+            "👥 <b>Друзья</b>\n"
+            "• <code>/friend_invite</code> – добавить друга\n"
+            "  ↳ по ответу на сообщение, @username, ссылке или ID\n"
+            "• <code>/invite_friend</code> – выдать приглашение уровня friend\n"
+            "• <code>/friend_requests</code> – входящие заявки\n"
+            "• <code>/friend_accept ID</code> – принять заявку\n"
+            "• <code>/friend_list</code> – список друзей\n"
+            "• <code>/friend_vs ID</code> – сравнить прогресс\n\n"
             "📨 <b>Обратная связь</b>\n"
             "• <code>/suggest текст</code> – отправить предложение/фидбек админам\n\n"
+            "📨 <b>Посты и канал</b>\n"
+            "• <code>/post</code> – мастер поста в канал\n"
+            "• <code>/post_draft</code> – черновик с подтверждением\n"
+            "• <code>/edit_post ссылка/ID</code> – изменить пост\n"
+            "• <code>/link_post ссылка/ID title_id</code> – привязать к тайтлу\n"
+            "• <code>/repost ссылка/ID</code> – пересоздать пост в канале\n\n"
+            "🧩 <b>Управление ботом</b>\n"
+            "• <code>/stats</code> – статистика бота\n"
+            "• <code>/users</code> – активированные пользователи\n"
+            "• <code>/ban_user ID</code> – заблокировать в боте\n"
+            "• <code>/unban_user ID</code> – разблокировать в боте\n"
+            "• <code>/admin_list</code> – список админов\n"
+            "• <code>/add_admin ID</code> – добавить админа (root)\n"
+            "• <code>/remove_admin ID</code> – убрать админа (кроме root)\n\n"
             "Навигация по аниме — через кнопки под сообщениями."
         )
     else:
@@ -1326,6 +1366,14 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "• <code>/watched_add id</code> – добавить тайтл в прогресс 150\n"
             "• <code>/watched_remove id</code> – убрать тайтл из прогресса 150\n"
             "• <code>/watched_list</code> – показать мой прогресс 150\n\n"
+            "👥 <b>Друзья</b>\n"
+            "• <code>/friend_invite</code> – добавить друга\n"
+            "  ↳ по ответу на сообщение, @username, ссылке или ID\n"
+            "• <code>/invite_friend</code> – выдать другу ссылку-приглашение (уровень friend)\n"
+            "• <code>/friend_requests</code> – входящие заявки в друзья\n"
+            "• <code>/friend_accept ID</code> – принять заявку\n"
+            "• <code>/friend_list</code> – список друзей\n"
+            "• <code>/friend_vs ID</code> – сравнить прогресс по аниме\n\n"
             "📨 <b>Обратная связь</b>\n"
             "• <code>/suggest текст</code> – предложить тайтл или идею для канала\n\n"
             "Навигация по аниме — через кнопки под сообщениями: тайтлы, популярное, 150 лучших, полнометражки."
