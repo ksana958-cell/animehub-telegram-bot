@@ -21,13 +21,44 @@ import random
 import time
 import asyncio
 import re
+import hashlib
+import logging
+import secrets
+from html import escape as html_escape
+
+
+def _env_int_list(name: str, default: list[int]) -> list[int]:
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default[:]
+    result = []
+    for part in raw.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            result.append(int(part))
+        except ValueError as exc:
+            raise RuntimeError(f"{name} должен содержать Telegram ID через запятую") from exc
+    return result
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
 
 CONFIG = {
-    "BOT_TOKEN": "8595192008:AAFUokx5z42w-lMmlxVqrzW43tpu0U1mOGA",
-    "CHANNEL_USERNAME": "@AnimeHUB_Dream",
-    "DATA_FILE": "bot_data.json",
-    "TITLES_FILE": "titles.json",
-    "ADMINS": [813738453],
+    # Секреты никогда не храним в Git. BOT_TOKEN задаётся только в панели хостинга / env.
+    "BOT_TOKEN": os.getenv("BOT_TOKEN", "").strip(),
+    "CHANNEL_USERNAME": os.getenv("CHANNEL_USERNAME", "@AnimeHUB_Dream").strip(),
+    "DATA_FILE": os.getenv("DATA_FILE", "bot_data.json").strip(),
+    "TITLES_FILE": os.getenv("TITLES_FILE", "titles.json").strip(),
+    # Telegram ID сам по себе не является секретом. Можно переопределить через ROOT_ADMIN_IDS.
+    "ADMINS": _env_int_list("ROOT_ADMIN_IDS", [813738453]),
+    "DROP_PENDING_UPDATES": _env_bool("DROP_PENDING_UPDATES", True),
 }
 
 BOT_TOKEN = CONFIG["BOT_TOKEN"]
@@ -35,6 +66,52 @@ CHANNEL_USERNAME = CONFIG["CHANNEL_USERNAME"]
 DATA_FILE = CONFIG["DATA_FILE"]
 TITLES_FILE = CONFIG["TITLES_FILE"]
 ADMINS = CONFIG["ADMINS"]
+DROP_PENDING_UPDATES = CONFIG["DROP_PENDING_UPDATES"]
+
+
+TOKEN_PATTERN = re.compile(r"\b\d{6,12}:[A-Za-z0-9_-]{20,}\b")
+
+
+def redact_secrets(text: str) -> str:
+    if not text:
+        return text
+    text = TOKEN_PATTERN.sub("[REDACTED_BOT_TOKEN]", text)
+    if BOT_TOKEN:
+        text = text.replace(BOT_TOKEN, "[REDACTED_BOT_TOKEN]")
+    return text
+
+
+class RedactingFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        return redact_secrets(super().format(record))
+
+
+def configure_logging() -> logging.Logger:
+    handler = logging.StreamHandler()
+    handler.setFormatter(RedactingFormatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s"))
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.addHandler(handler)
+    root.setLevel(logging.INFO)
+    # HTTP-клиент может быть очень шумным и печатать URL запросов.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    return logging.getLogger("animehub_bot")
+
+
+logger = configure_logging()
+
+
+def validate_runtime_config() -> None:
+    if not BOT_TOKEN:
+        raise RuntimeError(
+            "Не задан BOT_TOKEN. Добавьте новый токен из @BotFather в переменные окружения хостинга."
+        )
+    if not re.fullmatch(r"\d{6,12}:[A-Za-z0-9_-]{20,}", BOT_TOKEN):
+        raise RuntimeError("BOT_TOKEN имеет неверный формат. Проверьте переменную окружения BOT_TOKEN.")
+    if not CHANNEL_USERNAME.startswith("@") or len(CHANNEL_USERNAME) < 2:
+        raise RuntimeError("CHANNEL_USERNAME должен быть в формате @channel_username")
+    if not ADMINS:
+        raise RuntimeError("Не задан ни один root-admin. Укажите ROOT_ADMIN_IDS.")
 
 ACCESS_LEVELS = {
     "free": 0,
@@ -427,10 +504,26 @@ TOP150_MERGED_LIST = [
 
 TOP150_PAGE_SIZE = 25
 
-ACCESS_CODES = {
-    "AHVIP2025": "vip",
-    "AHFRIENDS": "friend",
-}
+# Коды доступа — тоже секреты. Старые коды из репозитория считаются скомпрометированными.
+ACCESS_CODES = {}
+for _env_name, _level in (("ACCESS_CODE_VIP", "vip"), ("ACCESS_CODE_FRIEND", "friend")):
+    _value = os.getenv(_env_name, "").strip()
+    if _value:
+        ACCESS_CODES[_value] = _level
+
+
+def get_access_level_for_code(code: str) -> str | None:
+    # compare_digest уменьшает утечки по времени сравнения секретов.
+    for expected, level in ACCESS_CODES.items():
+        if secrets.compare_digest(code, expected):
+            return level
+    return None
+
+
+def invite_storage_key(token: str) -> str:
+    # В bot_data.json храним не сам invite-токен, а только его SHA-256.
+    digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    return f"sha256:{digest}"
 
 LAST_BOT_MESSAGE_KEY = "last_bot_message_id"
 
@@ -627,6 +720,14 @@ async def load_data():
         return data
 
 
+def set_private_permissions(path: str) -> None:
+    try:
+        os.chmod(path, 0o600)
+    except (OSError, NotImplementedError):
+        # На некоторых платформах chmod недоступен/неполон.
+        pass
+
+
 def rotate_backups(path: str, keep: int = 7):
     if keep <= 0:
         return
@@ -648,8 +749,10 @@ def rotate_backups(path: str, keep: int = 7):
         try:
             with open(path, "rb") as fsrc:
                 content = fsrc.read()
-            with open(f"{path}.bak1", "wb") as fdst:
+            backup_path = f"{path}.bak1"
+            with open(backup_path, "wb") as fdst:
                 fdst.write(content)
+            set_private_permissions(backup_path)
         except OSError:
             pass
 
@@ -661,6 +764,7 @@ async def save_data(data):
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         os.replace(tmp, DATA_FILE)
+        set_private_permissions(DATA_FILE)
 
 
 def get_user(data, user_id):
@@ -760,6 +864,8 @@ def is_user_banned(data, user_id: int) -> bool:
 
 async def abort_if_banned(update: Update, data) -> bool:
     user_id = update.effective_user.id
+    if is_root_admin(user_id):
+        return False
     if is_user_banned(data, user_id):
         if update.effective_message:
             await update.effective_message.reply_text("Ты заблокирован в этом боте.")
@@ -1237,7 +1343,7 @@ async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE, data,
         percent = round(watched_150 / total_top150 * 100, 1)
         progress = f" ({watched_150}/{total_top150}, {percent}%)"
 
-    name_part = user_data.get("full_name") or tg_user.first_name
+    name_part = html_escape(user_data.get("full_name") or tg_user.first_name or "Пользователь")
     text = (
         f"👤 Профиль: <b>{name_part}</b>\n\n"
         f"🔑 Уровень доступа: <b>{access}</b>\n"
@@ -1297,14 +1403,17 @@ async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         if arg0.startswith("friend_"):
             token = arg0
             invites = data.get("invites", {})
-            info = invites.get(token)
+            hashed_key = invite_storage_key(token)
+            # hashed_key — новый безопасный формат; token — поддержка старых ссылок до их истечения.
+            storage_key = hashed_key if hashed_key in invites else token
+            info = invites.get(storage_key)
             if info and info.get("type") == "friend":
                 ensure_friend_access(user_data)
                 user_data["activated"] = True
                 info["uses"] = info.get("uses", 0) + 1
                 max_uses = info.get("max_uses")
                 if max_uses is not None and info["uses"] >= max_uses:
-                    invites.pop(token, None)
+                    invites.pop(storage_key, None)
                 data["invites"] = invites
                 await save_data(data)
                 text = (
@@ -1359,12 +1468,16 @@ async def handle_code(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     user_data = get_user(data, user_id)
     update_user_names(data, user_id, tg_user)
 
+    if check_rate_limit(user_id, "access_code", 2.0):
+        await update.effective_message.reply_text("Слишком много попыток. Подожди немного и попробуй снова.")
+        return
+
     if not context.args:
-        await update.effective_message.reply_text("Введите код после команды, например:\n<code>/code AHVIP2025</code>")
+        await update.effective_message.reply_text("Введите код после команды, например:\n<code>/code ВАШ_КОД</code>")
         return
 
     code = context.args[0].strip()
-    level = ACCESS_CODES.get(code)
+    level = get_access_level_for_code(code)
     if not level:
         await update.effective_message.reply_text("❌ Неверный или устаревший код доступа.")
         return
@@ -1424,7 +1537,7 @@ async def handle_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     lines = [f"👥 Активированные пользователи: <b>{total}</b>"]
     for uid, u in activated_users:
-        name = u.get("full_name") or f"Пользователь {uid}"
+        name = html_escape(u.get("full_name") or f"Пользователь {uid}")
         lines.append(f"• <a href='tg://user?id={uid}'>{name}</a> — <code>{uid}</code>")
     await send_with_cleanup(update, context, "\n".join(lines))
 
@@ -1921,12 +2034,13 @@ async def handle_invite_friend(update: Update, context: ContextTypes.DEFAULT_TYP
 
     invites = data.get("invites", {})
     while True:
-        token_suffix = "".join(random.choices("abcdefghijklmnopqrstuvwxyz0123456789", k=8))
-        token = f"friend_{token_suffix}"
-        if token not in invites:
+        # secrets, а не random: ссылка является bearer-секретом и должна быть непредсказуемой.
+        token = f"friend_{secrets.token_urlsafe(24)}"
+        storage_key = invite_storage_key(token)
+        if storage_key not in invites:
             break
 
-    invites[token] = {
+    invites[storage_key] = {
         "type": "friend",
         "created_by": from_id,
         "created_at": int(time.time()),
@@ -2035,7 +2149,7 @@ async def handle_friend_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
     lines = ["🤝 <b>Твой список друзей:</b>"]
     for fid in friends:
         fdata = get_user(data, int(fid))
-        name = fdata.get("full_name") or f"Пользователь {fid}"
+        name = html_escape(fdata.get("full_name") or f"Пользователь {fid}")
         lines.append(f"• <a href='tg://user?id={fid}'>{name}</a>")
     lines.append("\nЧтобы сравнить прогресс, используй:\n<code>/friend_vs ID_друга</code>")
     await send_with_cleanup(update, context, "\n".join(lines))
@@ -2128,7 +2242,7 @@ async def handle_suggest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 text=(
                     "📩 <b>Новое предложение от пользователя</b>\n\n"
                     f"От: <a href='tg://user?id={uid}'>{uid}</a>\n\n"
-                    f"Текст:\n{text}"
+                    f"Текст:\n{html_escape(text)}"
                 ),
                 parse_mode=ParseMode.HTML,
             )
@@ -2151,6 +2265,9 @@ async def handle_ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         target_id = int(context.args[0])
     except ValueError:
         await update.effective_message.reply_text("ID должен быть числом.")
+        return
+    if is_root_admin(target_id):
+        await update.effective_message.reply_text("Корневого администратора нельзя заблокировать через бота.")
         return
     tid = str(target_id)
     banned = data.get("banned", {})
@@ -2694,12 +2811,11 @@ async def edit_post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE
                     reply_markup=markup,
                     parse_mode=ParseMode.HTML,
                 )
-        except Exception as e:
+        except Exception:
+            logger.exception("Не удалось отредактировать пост %s", msg_id)
             await update.effective_message.reply_text(
-                "Не удалось отредактировать пост. Возможные причины:\n"
-                "• Бот не является админом в канале\n"
-                "• Пост слишком старый или не создан этим ботом\n\n"
-                f"Техническая ошибка: {e}"
+                "Не удалось отредактировать пост. Проверь права бота в канале и корректность ID сообщения. "
+                "Технические детали записаны в серверный лог."
             )
             for key in ["edit_msg_id", "edit_photo", "edit_caption", "edit_desc_link"]:
                 context.user_data.pop(key, None)
@@ -2800,12 +2916,11 @@ async def handle_repost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 from_chat_id=CHANNEL_USERNAME,
                 message_id=msg_id,
             )
-        except Exception as e:
+        except Exception:
+            logger.exception("Не удалось пересоздать пост %s", msg_id)
             await update.effective_message.reply_text(
-                "Не удалось пересоздать пост. Возможные причины:\n"
-                "• Бот не имеет доступа к этому сообщению\n"
-                "• Сообщение не найдено\n\n"
-                f"Техническая ошибка: {e}"
+                "Не удалось пересоздать пост. Проверь права бота и ID сообщения. "
+                "Технические детали записаны в серверный лог."
             )
             return
 
@@ -2826,13 +2941,27 @@ async def handle_repost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         HEAVY_ACTIVE -= 1
 
 
+async def handle_unexpected_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    logger.error("Необработанная ошибка при обработке update", exc_info=context.error)
+    if isinstance(update, Update) and update.effective_message:
+        try:
+            await update.effective_message.reply_text(
+                "Произошла внутренняя ошибка. Детали сохранены в серверном логе."
+            )
+        except Exception:
+            logger.exception("Не удалось отправить пользователю сообщение об ошибке")
+
+
 def main() -> None:
+    validate_runtime_config()
     defaults = Defaults(parse_mode=ParseMode.HTML)
 
     application = (
         Application.builder()
         .token(BOT_TOKEN)
         .defaults(defaults)
+        # ConversationHandler и операции с JSON-файлами безопаснее выполнять последовательно.
+        .concurrent_updates(False)
         .build()
     )
 
@@ -2892,8 +3021,14 @@ def main() -> None:
     application.add_handler(CommandHandler("add_admin", handle_add_admin))
     application.add_handler(CommandHandler("remove_admin", handle_remove_admin))
     application.add_handler(CallbackQueryHandler(handle_buttons))
+    application.add_error_handler(handle_unexpected_error)
 
-    application.run_polling()
+    if not ACCESS_CODES:
+        logger.warning(
+            "ACCESS_CODE_VIP / ACCESS_CODE_FRIEND не заданы: команда /code не выдаст повышенный доступ."
+        )
+
+    application.run_polling(drop_pending_updates=DROP_PENDING_UPDATES)
 
 
 if __name__ == "__main__":
