@@ -1,0 +1,676 @@
+{
+  "version": 1,
+  "count": 78,
+  "titles": [
+    {
+      "id": "solo_leveling",
+      "name": "Поднятие уровня в одиночку",
+      "channel_post_id": 41,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/41",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah42",
+      "name": "Тетрадь Смерти",
+      "channel_post_id": 42,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/42",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah43",
+      "name": "Гуррен-Лаганн, пронзающий небеса",
+      "channel_post_id": 43,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/43",
+      "has_4k": true,
+      "aliases": [
+        "Гуррен-Лаганн",
+        "Tengen Toppa Gurren Lagann"
+      ]
+    },
+    {
+      "id": "ah44",
+      "name": "Созданный в Бездне",
+      "channel_post_id": 44,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/44",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah45",
+      "name": "Евангелион нового поколения",
+      "channel_post_id": 45,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/45",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah46",
+      "name": "Ученик чудовища",
+      "channel_post_id": 46,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/46",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah47",
+      "name": "Твоё имя",
+      "channel_post_id": 47,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/47",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah48",
+      "name": "Провожающая в последний путь Фрирен",
+      "channel_post_id": 48,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/48",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah49",
+      "name": "Эксперименты Лэйн",
+      "channel_post_id": 49,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/49",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah50",
+      "name": "Берсерк (1997)",
+      "channel_post_id": 50,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/50",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah51",
+      "name": "Человек-Бензопила",
+      "channel_post_id": 51,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/51",
+      "has_4k": true,
+      "aliases": [
+        "Человек бензопила",
+        "Chainsaw Man"
+      ]
+    },
+    {
+      "id": "ah52",
+      "name": "Ковбой Бибоп",
+      "channel_post_id": 52,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/52",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah53",
+      "name": "Дорохедоро",
+      "channel_post_id": 53,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/53",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah54",
+      "name": "Токийский гуль",
+      "channel_post_id": 54,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/54",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah55",
+      "name": "Гачиакута",
+      "channel_post_id": 55,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/55",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah57",
+      "name": "Подземелье вкусностей",
+      "channel_post_id": 57,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/57",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah60",
+      "name": "Чёрный Клевер",
+      "channel_post_id": 60,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/60",
+      "has_4k": true,
+      "aliases": [
+        "Black Clover"
+      ]
+    },
+    {
+      "id": "ah63",
+      "name": "Врата Штейна",
+      "channel_post_id": 63,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/63",
+      "has_4k": false,
+      "aliases": [
+        "Steins;Gate"
+      ]
+    },
+    {
+      "id": "ah64",
+      "name": "Re:Zero. Жизнь в альтернативном мире с нуля",
+      "channel_post_id": 64,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/64",
+      "has_4k": true,
+      "aliases": [
+        "РеЗеро. Жизнь с нуля в альтернативном мире",
+        "Re:Zero"
+      ]
+    },
+    {
+      "id": "ah65",
+      "name": "Магическая битва",
+      "channel_post_id": 65,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/65",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah66",
+      "name": "Эхо Террора",
+      "channel_post_id": 66,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/66",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah67",
+      "name": "Моя геройская академия",
+      "channel_post_id": 67,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/67",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah69",
+      "name": "Санда",
+      "channel_post_id": 69,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/69",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah70",
+      "name": "Блич",
+      "channel_post_id": 70,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/70",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah71",
+      "name": "Эта фарфоровая кукла влюбилась",
+      "channel_post_id": 71,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/71",
+      "has_4k": true,
+      "aliases": [
+        "My Dress-Up Darling"
+      ]
+    },
+    {
+      "id": "ah72",
+      "name": "Необъятный океан",
+      "channel_post_id": 72,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/72",
+      "has_4k": true,
+      "aliases": [
+        "Grand Blue"
+      ]
+    },
+    {
+      "id": "ah73",
+      "name": "Лазарь",
+      "channel_post_id": 73,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/73",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah74",
+      "name": "Иллюзия рая",
+      "channel_post_id": 74,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/74",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah75",
+      "name": "Раб спецотряда демонического города",
+      "channel_post_id": 75,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/75",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah76",
+      "name": "Звёздное дитя",
+      "channel_post_id": 76,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/76",
+      "has_4k": true,
+      "aliases": [
+        "Ребёнок идола",
+        "Oshi no Ko"
+      ]
+    },
+    {
+      "id": "ah78",
+      "name": "Киберпанк: Бегущие по краю",
+      "channel_post_id": 78,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/78",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah79",
+      "name": "Ван-Пис",
+      "channel_post_id": 79,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/79",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah80",
+      "name": "Доктор Стоун",
+      "channel_post_id": 80,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/80",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah82",
+      "name": "Монолог фармацевта",
+      "channel_post_id": 82,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/82",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah83",
+      "name": "Девочка-волшебница Мадока",
+      "channel_post_id": 83,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/83",
+      "has_4k": true,
+      "aliases": [
+        "Девочка-волшебница Мадока Магика",
+        "Puella Magi Madoka Magica"
+      ]
+    },
+    {
+      "id": "ah84",
+      "name": "Невероятные приключения ДжоДжо",
+      "channel_post_id": 84,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/84",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah85",
+      "name": "Приговорённый быть героем: Тюремные записи девять тысяч четвёртого штрафного отряда героев",
+      "channel_post_id": 85,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/85",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah86",
+      "name": "Наруто",
+      "channel_post_id": 86,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/86",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah87",
+      "name": "Пламенная бригада пожарных",
+      "channel_post_id": 87,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/87",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah88",
+      "name": "Моб Психо 100",
+      "channel_post_id": 88,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/88",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah90",
+      "name": "Семья шпиона",
+      "channel_post_id": 90,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/90",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah91",
+      "name": "Адский рай",
+      "channel_post_id": 91,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/91",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah92",
+      "name": "Повелитель",
+      "channel_post_id": 92,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/92",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah93",
+      "name": "Монстр",
+      "channel_post_id": 93,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/93",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah94",
+      "name": "Лето, когда умер Хикару",
+      "channel_post_id": 94,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/94",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah95",
+      "name": "Стальной Алхимик",
+      "channel_post_id": 95,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/95",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah96",
+      "name": "Стальной Алхимик: Братство",
+      "channel_post_id": 96,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/96",
+      "has_4k": true,
+      "aliases": [
+        "Fullmetal Alchemist: Brotherhood"
+      ]
+    },
+    {
+      "id": "ah97",
+      "name": "Хантер × Хантер",
+      "channel_post_id": 97,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/97",
+      "has_4k": true,
+      "aliases": [
+        "Хантер Х Хантер",
+        "Охотник × Охотник",
+        "Hunter x Hunter"
+      ]
+    },
+    {
+      "id": "ah98",
+      "name": "Крутой учитель Онидзука",
+      "channel_post_id": 98,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/98",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah100",
+      "name": "Дьявол может плакать",
+      "channel_post_id": 100,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/100",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah101",
+      "name": "Форма голоса",
+      "channel_post_id": 101,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/101",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah102",
+      "name": "Ванпанчмен",
+      "channel_post_id": 102,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/102",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah104",
+      "name": "Сага о Винланде",
+      "channel_post_id": 104,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/104",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah105",
+      "name": "Дороро",
+      "channel_post_id": 105,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/105",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah106",
+      "name": "Самурай Чамплу",
+      "channel_post_id": 106,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/106",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah107",
+      "name": "Реинкарнация безработного: История о приключениях в другом мире",
+      "channel_post_id": 107,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/107",
+      "has_4k": true,
+      "aliases": [
+        "Реинкарнация безработного",
+        "Mushoku Tensei"
+      ]
+    },
+    {
+      "id": "ah109",
+      "name": "Афросамурай",
+      "channel_post_id": 109,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/109",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah110",
+      "name": "История о перекуре за супермаркетом",
+      "channel_post_id": 110,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/110",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah111",
+      "name": "Боевой петух",
+      "channel_post_id": 111,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/111",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah112",
+      "name": "Нет игры — нет жизни",
+      "channel_post_id": 112,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/112",
+      "has_4k": true,
+      "aliases": [
+        "No Game No Life"
+      ]
+    },
+    {
+      "id": "ah113",
+      "name": "Убийца Акамэ!",
+      "channel_post_id": 113,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/113",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah114",
+      "name": "Восемьдесят шесть",
+      "channel_post_id": 114,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/114",
+      "has_4k": true,
+      "aliases": [
+        "86 Eighty-Six"
+      ]
+    },
+    {
+      "id": "ah115",
+      "name": "Последний Серафим",
+      "channel_post_id": 115,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/115",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah116",
+      "name": "Милый во Франксе",
+      "channel_post_id": 116,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/116",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah121",
+      "name": "Ателье колдовских колпаков",
+      "channel_post_id": 121,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/121",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah124",
+      "name": "Кайдзю №8",
+      "channel_post_id": 124,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/124",
+      "has_4k": true,
+      "aliases": [
+        "Кайдзю номер восемь",
+        "Kaiju No. 8"
+      ]
+    },
+    {
+      "id": "ah126",
+      "name": "Ветролом",
+      "channel_post_id": 126,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/126",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah127",
+      "name": "Реинкарнация безработного: История о приключениях в другом мире (Обновлённая версия)",
+      "channel_post_id": 127,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/127",
+      "has_4k": true,
+      "aliases": [
+        "Реинкарнация безработного",
+        "Mushoku Tensei"
+      ],
+      "top150_exclude": true
+    },
+    {
+      "id": "ah128",
+      "name": "Драконий жемчуг",
+      "channel_post_id": 128,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/128",
+      "has_4k": true,
+      "aliases": [
+        "Драгонбол",
+        "Dragon Ball"
+      ]
+    },
+    {
+      "id": "ah129",
+      "name": "Неуязвимый",
+      "channel_post_id": 129,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/129",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah130",
+      "name": "Город, в котором меня нет",
+      "channel_post_id": 130,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/130",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah131",
+      "name": "Вайолет Эвергарден",
+      "channel_post_id": 131,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/131",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah132",
+      "name": "Кабанэри железной крепости",
+      "channel_post_id": 132,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/132",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah133",
+      "name": "Ниндзя Камуи",
+      "channel_post_id": 133,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/133",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah134",
+      "name": "Патриотизм Мориарти",
+      "channel_post_id": 134,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/134",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah135",
+      "name": "О движении Земли",
+      "channel_post_id": 135,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/135",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah137",
+      "name": "Благоухающий цветок расцветает с достоинством",
+      "channel_post_id": 137,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/137",
+      "has_4k": true,
+      "aliases": []
+    },
+    {
+      "id": "ah138",
+      "name": "Золотое божество",
+      "channel_post_id": 138,
+      "channel_post_url": "https://t.me/AnimeHUB_Dream/138",
+      "has_4k": true,
+      "aliases": []
+    }
+  ]
+}
