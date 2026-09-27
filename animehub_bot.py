@@ -157,45 +157,153 @@ TITLE_STATUSES = {
 }
 TITLE_STATUS_ORDER = ["planned", "watching", "completed", "dropped"]
 
-DEFAULT_TITLES = [
-    {
-        "id": "solo_leveling",
-        "name": "Поднятие уровня в одиночку",
-        "season": "Сезоны 1–2",
-        "status": "Вышел",
-        "episodes": "25 эпизодов",
-        "year": "2024–2025",
-        "studio": "A-1 Pictures",
-        "author": "Chugong",
-        "director": "Ясунори Одзаки",
-        "voice": "AniDub / Crunchyroll",
-        "shiki": "8.45",
-        "imdb": "8.2",
-        "kp": "8.0",
-        "genres": "#Экшен #Фэнтези #Система #Охотники #Демоны",
-        "playlist": "Сезоны 1–2 — смотреть можно в специальной комнате канала.",
-        "desc": (
-            "Сон Джин-Ву — охотник ранга E, которого считали самым слабым в мире. "
-            "Он рискует жизнью в подземельях ради больной матери, пока однажды не получает "
-            "уникальную «систему» прокачки, позволяющую расти в силе как в игре.\n\n"
-            "В первых сезонах он проходит путь от бесполезного аутсайдера до охотника, "
-            "чья мощь пугает даже самых опытных бойцов. Его ждут новые измерения, опасные "
-            "рейды, интриги мира охотников и всё более мрачные тайны, связанные с его "
-            "собственным предназначением."
-        ),
-        "top150": False,
+CATALOG_SEED_VERSION = 20260927
+CATALOG_PAGE_SIZE = 10
+
+def _catalog_seed_title(tid: str, name: str, post_id: int, has_4k: bool, aliases: list[str] | None = None, **extra) -> dict:
+    item = {
+        "id": tid,
+        "name": name,
+        "season": "-",
+        "status": "-",
+        "episodes": "-",
+        "year": "-",
+        "studio": "-",
+        "author": "-",
+        "director": "-",
+        "voice": "-",
+        "shiki": "-",
+        "imdb": "-",
+        "kp": "-",
+        "genres": "-",
+        "playlist": "-",
+        "desc": "-",
         "min_access": "free",
-        "hot": True,
-        "added_at": int(time.time()),
-    },
+        "hot": False,
+        "added_at": post_id,
+        "channel_post_id": post_id,
+        "has_4k": bool(has_4k),
+        "aliases": list(aliases or []),
+        "catalog_seed_version": CATALOG_SEED_VERSION,
+    }
+    item.update(extra)
+    return item
+
+CATALOG_SEED = [
+    _catalog_seed_title('solo_leveling', 'Поднятие уровня в одиночку', 41, True, aliases=[]),
+    _catalog_seed_title('ah42', 'Тетрадь Смерти', 42, True, aliases=[]),
+    _catalog_seed_title('ah43', 'Гуррен-Лаганн, пронзающий небеса', 43, True, aliases=['Гуррен-Лаганн', 'Tengen Toppa Gurren Lagann']),
+    _catalog_seed_title('ah44', 'Созданный в Бездне', 44, True, aliases=[]),
+    _catalog_seed_title('ah45', 'Евангелион нового поколения', 45, True, aliases=[]),
+    _catalog_seed_title('ah46', 'Ученик чудовища', 46, True, aliases=[]),
+    _catalog_seed_title('ah47', 'Твоё имя', 47, True, aliases=[]),
+    _catalog_seed_title('ah48', 'Провожающая в последний путь Фрирен', 48, True, aliases=[]),
+    _catalog_seed_title('ah49', 'Эксперименты Лэйн', 49, True, aliases=[]),
+    _catalog_seed_title('ah50', 'Берсерк (1997)', 50, True, aliases=[]),
+    _catalog_seed_title('ah51', 'Человек-Бензопила', 51, True, aliases=['Человек бензопила', 'Chainsaw Man']),
+    _catalog_seed_title('ah52', 'Ковбой Бибоп', 52, True, aliases=[]),
+    _catalog_seed_title('ah53', 'Дорохедоро', 53, True, aliases=[]),
+    _catalog_seed_title('ah54', 'Токийский гуль', 54, True, aliases=[]),
+    _catalog_seed_title('ah55', 'Гачиакута', 55, True, aliases=[]),
+    _catalog_seed_title('ah57', 'Подземелье вкусностей', 57, True, aliases=[]),
+    _catalog_seed_title('ah60', 'Чёрный Клевер', 60, True, aliases=['Black Clover']),
+    _catalog_seed_title('ah63', 'Врата Штейна', 63, False, aliases=['Steins;Gate']),
+    _catalog_seed_title('ah64', 'Re:Zero. Жизнь в альтернативном мире с нуля', 64, True, aliases=['РеЗеро. Жизнь с нуля в альтернативном мире', 'Re:Zero']),
+    _catalog_seed_title('ah65', 'Магическая битва', 65, True, aliases=[]),
+    _catalog_seed_title('ah66', 'Эхо Террора', 66, True, aliases=[]),
+    _catalog_seed_title('ah67', 'Моя геройская академия', 67, True, aliases=[]),
+    _catalog_seed_title('ah69', 'Санда', 69, True, aliases=[]),
+    _catalog_seed_title('ah70', 'Блич', 70, True, aliases=[]),
+    _catalog_seed_title('ah71', 'Эта фарфоровая кукла влюбилась', 71, True, aliases=['My Dress-Up Darling']),
+    _catalog_seed_title('ah72', 'Необъятный океан', 72, True, aliases=['Grand Blue']),
+    _catalog_seed_title('ah73', 'Лазарь', 73, True, aliases=[]),
+    _catalog_seed_title('ah74', 'Иллюзия рая', 74, True, aliases=[]),
+    _catalog_seed_title('ah75', 'Раб спецотряда демонического города', 75, True, aliases=[]),
+    _catalog_seed_title('ah76', 'Звёздное дитя', 76, True, aliases=['Ребёнок идола', 'Oshi no Ko']),
+    _catalog_seed_title('ah78', 'Киберпанк: Бегущие по краю', 78, True, aliases=[]),
+    _catalog_seed_title('ah79', 'Ван-Пис', 79, True, aliases=[]),
+    _catalog_seed_title('ah80', 'Доктор Стоун', 80, True, aliases=[]),
+    _catalog_seed_title('ah82', 'Монолог фармацевта', 82, True, aliases=[]),
+    _catalog_seed_title('ah83', 'Девочка-волшебница Мадока', 83, True, aliases=['Девочка-волшебница Мадока Магика', 'Puella Magi Madoka Magica']),
+    _catalog_seed_title('ah84', 'Невероятные приключения ДжоДжо', 84, True, aliases=[]),
+    _catalog_seed_title('ah85', 'Приговорённый быть героем: Тюремные записи девять тысяч четвёртого штрафного отряда героев', 85, True, aliases=[]),
+    _catalog_seed_title('ah86', 'Наруто', 86, True, aliases=[]),
+    _catalog_seed_title('ah87', 'Пламенная бригада пожарных', 87, True, aliases=[]),
+    _catalog_seed_title('ah88', 'Моб Психо 100', 88, True, aliases=[]),
+    _catalog_seed_title('ah90', 'Семья шпиона', 90, True, aliases=[]),
+    _catalog_seed_title('ah91', 'Адский рай', 91, True, aliases=[]),
+    _catalog_seed_title('ah92', 'Повелитель', 92, True, aliases=[]),
+    _catalog_seed_title('ah93', 'Монстр', 93, True, aliases=[]),
+    _catalog_seed_title('ah94', 'Лето, когда умер Хикару', 94, True, aliases=[]),
+    _catalog_seed_title('ah95', 'Стальной Алхимик', 95, True, aliases=[]),
+    _catalog_seed_title('ah96', 'Стальной Алхимик: Братство', 96, True, aliases=['Fullmetal Alchemist: Brotherhood']),
+    _catalog_seed_title('ah97', 'Хантер × Хантер', 97, True, aliases=['Хантер Х Хантер', 'Охотник × Охотник', 'Hunter x Hunter']),
+    _catalog_seed_title('ah98', 'Крутой учитель Онидзука', 98, True, aliases=[]),
+    _catalog_seed_title('ah100', 'Дьявол может плакать', 100, True, aliases=[]),
+    _catalog_seed_title('ah101', 'Форма голоса', 101, True, aliases=[]),
+    _catalog_seed_title('ah102', 'Ванпанчмен', 102, True, aliases=[]),
+    _catalog_seed_title('ah104', 'Сага о Винланде', 104, True, aliases=[]),
+    _catalog_seed_title('ah105', 'Дороро', 105, True, aliases=[]),
+    _catalog_seed_title('ah106', 'Самурай Чамплу', 106, True, aliases=[]),
+    _catalog_seed_title('ah107', 'Реинкарнация безработного: История о приключениях в другом мире', 107, True, aliases=['Реинкарнация безработного', 'Mushoku Tensei']),
+    _catalog_seed_title('ah109', 'Афросамурай', 109, True, aliases=[]),
+    _catalog_seed_title('ah110', 'История о перекуре за супермаркетом', 110, True, aliases=[]),
+    _catalog_seed_title('ah111', 'Боевой петух', 111, True, aliases=[]),
+    _catalog_seed_title('ah112', 'Нет игры — нет жизни', 112, True, aliases=['No Game No Life']),
+    _catalog_seed_title('ah113', 'Убийца Акамэ!', 113, True, aliases=[]),
+    _catalog_seed_title('ah114', 'Восемьдесят шесть', 114, True, aliases=['86 Eighty-Six']),
+    _catalog_seed_title('ah115', 'Последний Серафим', 115, True, aliases=[]),
+    _catalog_seed_title('ah116', 'Милый во Франксе', 116, True, aliases=[]),
+    _catalog_seed_title('ah121', 'Ателье колдовских колпаков', 121, True, aliases=[]),
+    _catalog_seed_title('ah124', 'Кайдзю №8', 124, True, aliases=['Кайдзю номер восемь', 'Kaiju No. 8']),
+    _catalog_seed_title('ah126', 'Ветролом', 126, True, aliases=[]),
+    _catalog_seed_title('ah127', 'Реинкарнация безработного: История о приключениях в другом мире (Обновлённая версия)', 127, True, aliases=['Реинкарнация безработного', 'Mushoku Tensei'], top150_exclude=True),
+    _catalog_seed_title('ah128', 'Драконий жемчуг', 128, True, aliases=['Драгонбол', 'Dragon Ball']),
+    _catalog_seed_title('ah129', 'Неуязвимый', 129, True, aliases=[]),
+    _catalog_seed_title('ah130', 'Город, в котором меня нет', 130, True, aliases=[]),
+    _catalog_seed_title('ah131', 'Вайолет Эвергарден', 131, True, aliases=[]),
+    _catalog_seed_title('ah132', 'Кабанэри железной крепости', 132, True, aliases=[]),
+    _catalog_seed_title('ah133', 'Ниндзя Камуи', 133, True, aliases=[]),
+    _catalog_seed_title('ah134', 'Патриотизм Мориарти', 134, True, aliases=[]),
+    _catalog_seed_title('ah135', 'О движении Земли', 135, True, aliases=[]),
+    _catalog_seed_title('ah137', 'Благоухающий цветок расцветает с достоинством', 137, True, aliases=[]),
+    _catalog_seed_title('ah138', 'Золотое божество', 138, True, aliases=[]),
 ]
+
+# Сохраняем уже заполненную карточку Solo Leveling из прежней версии проекта.
+CATALOG_SEED[0].update({
+    "season": "Сезоны 1–2",
+    "status": "Вышел",
+    "episodes": "25 эпизодов",
+    "year": "2024–2025",
+    "studio": "A-1 Pictures",
+    "author": "Chugong",
+    "director": "Ясунори Одзаки",
+    "voice": "AniDub / Crunchyroll",
+    "shiki": "8.45",
+    "imdb": "8.2",
+    "kp": "8.0",
+    "genres": "#Экшен #Фэнтези #Система #Охотники #Демоны",
+    "playlist": "Сезоны 1–2 — смотреть можно в специальной комнате канала.",
+    "desc": (
+        "Сон Джин-Ву — охотник ранга E, которого считали самым слабым в мире. "
+        "Он рискует жизнью в подземельях ради больной матери, пока однажды не получает "
+        "уникальную «систему» прокачки, позволяющую расти в силе как в игре.\n\n"
+        "В первых сезонах он проходит путь от бесполезного аутсайдера до охотника, "
+        "чья мощь пугает даже самых опытных бойцов. Его ждут новые измерения, опасные "
+        "рейды, интриги мира охотников и всё более мрачные тайны, связанные с его "
+        "собственным предназначением."
+    ),
+    "hot": True,
+})
+
+DEFAULT_TITLES = CATALOG_SEED
 
 SECTION_TEXTS = {
     "titles": (
         "📚 Раздел «Аниме по тайтлам»\n\n"
-        "Здесь будет удобный список всех тайтлов, доступных в AnimeHUB | Dream.\n"
-        "Тайтлы можно разбить по алфавиту, сезонам или плейлистам.\n\n"
-        "Открой навигацию в канале и переходи к нужному аниме."
+        "Полный каталог AnimeHUB | Dream. Выбирай тайтл кнопкой — бот покажет карточку, "
+        "статус 4K, прогресс и прямую ссылку на пост в канале."
     ),
     "hot_now": (
         "🔥 Раздел «Популярно сейчас»\n\n"
@@ -583,72 +691,179 @@ def rebuild_top150_maps():
         TOP150_MAP_MERGED[norm_title(ru)] = i
 
 
+def title_channel_url(title: dict) -> str | None:
+    explicit = str(title.get("channel_post_url") or "").strip()
+    if explicit.startswith(("https://", "http://")):
+        return explicit
+    post_id = title.get("channel_post_id")
+    try:
+        post_id = int(post_id)
+    except (TypeError, ValueError):
+        return None
+    return f"https://t.me/{CHANNEL_USERNAME.lstrip('@')}/{post_id}"
+
+
+def _catalog_names(title: dict) -> list[str]:
+    values = [str(title.get("name") or "")]
+    aliases = title.get("aliases", [])
+    if isinstance(aliases, list):
+        values.extend(str(x) for x in aliases if x)
+    return [x for x in values if x]
+
+
 def ensure_title_top150_fields(title: dict):
-    n = norm_title(title.get("name", ""))
-    poster_pos = TOP150_MAP_POSTER.get(n)
-    merged_pos = TOP150_MAP_MERGED.get(n)
+    if title.get("top150_exclude"):
+        title["top150_poster_pos"] = None
+        title["top150_merged_pos"] = None
+        title["top150"] = False
+        return
+
+    poster_pos = None
+    merged_pos = None
+    for candidate in _catalog_names(title):
+        n = norm_title(candidate)
+        if poster_pos is None:
+            poster_pos = TOP150_MAP_POSTER.get(n)
+        if merged_pos is None:
+            merged_pos = TOP150_MAP_MERGED.get(n)
+        if poster_pos and merged_pos:
+            break
 
     title["top150_poster_pos"] = poster_pos
     title["top150_merged_pos"] = merged_pos
     title["top150"] = bool(poster_pos or merged_pos)
 
 
+def _placeholder_value(value) -> bool:
+    return value is None or str(value).strip() in {"", "-", "----", "?", "??"}
+
+
+def merge_catalog_seed(existing: list[dict]) -> tuple[list[dict], bool]:
+    """Добавляет официальный каталог в существующий titles.json без стирания заполненных метаданных."""
+    changed = False
+    by_id = {str(t.get("id")): t for t in existing if t.get("id")}
+    by_post = {}
+    by_name = {}
+    for t in existing:
+        try:
+            pid = int(t.get("channel_post_id"))
+            by_post[pid] = t
+        except (TypeError, ValueError):
+            pass
+        by_name.setdefault(norm_title(t.get("name", "")), t)
+
+    for seed in CATALOG_SEED:
+        target = by_id.get(seed["id"])
+        if target is None:
+            target = by_post.get(seed["channel_post_id"])
+        if target is None:
+            target = by_name.get(norm_title(seed.get("name", "")))
+
+        if target is None:
+            target = dict(seed)
+            target["aliases"] = list(seed.get("aliases", []))
+            existing.append(target)
+            by_id[target["id"]] = target
+            by_post[target["channel_post_id"]] = target
+            by_name.setdefault(norm_title(target.get("name", "")), target)
+            changed = True
+            continue
+
+        # Эти поля являются фактами из актуального списка канала и синхронизируются всегда.
+        for key in ("name", "channel_post_id", "has_4k", "catalog_seed_version", "top150_exclude"):
+            if key == "channel_post_id" and target.get("channel_post_deleted"):
+                continue
+            if key in seed and target.get(key) != seed.get(key):
+                target[key] = seed.get(key)
+                changed = True
+        if target.get("aliases") != seed.get("aliases"):
+            current_aliases = target.get("aliases") if isinstance(target.get("aliases"), list) else []
+            merged_aliases = list(dict.fromkeys([*current_aliases, *seed.get("aliases", [])]))
+            if target.get("aliases") != merged_aliases:
+                target["aliases"] = merged_aliases
+                changed = True
+
+        # Заполняем только пустые поля, чтобы не перетирать уже отредактированные карточки.
+        for key, value in seed.items():
+            if key in {"id", "name", "channel_post_id", "has_4k", "aliases", "catalog_seed_version", "top150_exclude"}:
+                continue
+            if key not in target or _placeholder_value(target.get(key)):
+                if not _placeholder_value(value):
+                    target[key] = value
+                    changed = True
+
+        target.setdefault("min_access", "free")
+        target.setdefault("hot", False)
+        target.setdefault("added_at", seed.get("added_at", int(time.time())))
+        target.setdefault("has_4k", False)
+        target.setdefault("aliases", [])
+
+    return existing, changed
+
+
 async def load_titles() -> list[dict]:
     global TITLES_CACHE, TITLES_BY_ID
     async with TITLES_LOCK:
-        if not os.path.exists(TITLES_FILE):
-            rebuild_top150_maps()
-            titles = DEFAULT_TITLES[:]
-            for t in titles:
-                ensure_title_top150_fields(t)
-            tmp = TITLES_FILE + ".tmp"
-            with open(tmp, "w", encoding="utf-8") as f:
-                json.dump({"version": 1, "titles": titles}, f, ensure_ascii=False, indent=2)
-            os.replace(tmp, TITLES_FILE)
-            TITLES_CACHE = titles
-            TITLES_BY_ID = {t["id"]: t for t in titles}
-            return titles
-
-        try:
-            with open(TITLES_FILE, "r", encoding="utf-8") as f:
-                obj = json.load(f)
-        except json.JSONDecodeError:
-            broken = TITLES_FILE + f".broken_{int(time.time())}"
-            try:
-                os.replace(TITLES_FILE, broken)
-            except OSError:
-                pass
-            rebuild_top150_maps()
-            titles = DEFAULT_TITLES[:]
-            for t in titles:
-                ensure_title_top150_fields(t)
-            tmp = TITLES_FILE + ".tmp"
-            with open(tmp, "w", encoding="utf-8") as f:
-                json.dump({"version": 1, "titles": titles}, f, ensure_ascii=False, indent=2)
-            os.replace(tmp, TITLES_FILE)
-            TITLES_CACHE = titles
-            TITLES_BY_ID = {t["id"]: t for t in titles}
-            return titles
-
-        titles = obj.get("titles", [])
-        if not isinstance(titles, list):
-            titles = []
-
         rebuild_top150_maps()
+        changed = False
+
+        if not os.path.exists(TITLES_FILE):
+            titles = []
+        else:
+            try:
+                with open(TITLES_FILE, "r", encoding="utf-8") as f:
+                    obj = json.load(f)
+                titles = obj.get("titles", [])
+                if not isinstance(titles, list):
+                    titles = []
+                    changed = True
+            except json.JSONDecodeError:
+                broken = TITLES_FILE + f".broken_{int(time.time())}"
+                try:
+                    os.replace(TITLES_FILE, broken)
+                except OSError:
+                    pass
+                titles = []
+                changed = True
+
         fixed = []
         for t in titles:
-            if not isinstance(t, dict):
+            if not isinstance(t, dict) or "id" not in t or "name" not in t:
+                changed = True
                 continue
-            if "id" not in t or "name" not in t:
-                continue
-            ensure_title_top150_fields(t)
             if "added_at" not in t:
                 t["added_at"] = int(time.time())
+                changed = True
             if "min_access" not in t:
                 t["min_access"] = "free"
+                changed = True
             if "hot" not in t:
                 t["hot"] = False
+                changed = True
+            if "has_4k" not in t:
+                t["has_4k"] = False
+                changed = True
+            if "aliases" not in t or not isinstance(t.get("aliases"), list):
+                t["aliases"] = []
+                changed = True
             fixed.append(t)
+
+        fixed, seed_changed = merge_catalog_seed(fixed)
+        changed = changed or seed_changed
+
+        for t in fixed:
+            old_top = (t.get("top150_poster_pos"), t.get("top150_merged_pos"), t.get("top150"))
+            ensure_title_top150_fields(t)
+            new_top = (t.get("top150_poster_pos"), t.get("top150_merged_pos"), t.get("top150"))
+            if old_top != new_top:
+                changed = True
+
+        if changed or not os.path.exists(TITLES_FILE):
+            tmp = TITLES_FILE + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump({"version": 2, "catalog_seed_version": CATALOG_SEED_VERSION, "titles": fixed}, f, ensure_ascii=False, indent=2)
+            os.replace(tmp, TITLES_FILE)
+            set_private_permissions(TITLES_FILE)
 
         TITLES_CACHE = fixed
         TITLES_BY_ID = {t["id"]: t for t in fixed}
@@ -659,11 +874,14 @@ async def save_titles(titles: list[dict]) -> None:
     async with TITLES_LOCK:
         rebuild_top150_maps()
         for t in titles:
+            t.setdefault("has_4k", False)
+            t.setdefault("aliases", [])
             ensure_title_top150_fields(t)
         tmp = TITLES_FILE + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
-            json.dump({"version": 1, "titles": titles}, f, ensure_ascii=False, indent=2)
+            json.dump({"version": 2, "catalog_seed_version": CATALOG_SEED_VERSION, "titles": titles}, f, ensure_ascii=False, indent=2)
         os.replace(tmp, TITLES_FILE)
+        set_private_permissions(TITLES_FILE)
         global TITLES_CACHE, TITLES_BY_ID
         TITLES_CACHE = titles
         TITLES_BY_ID = {t["id"]: t for t in titles}
@@ -1001,27 +1219,30 @@ def build_title_keyboard(title: dict, user_data: dict) -> InlineKeyboardMarkup:
         fav_text = "⭐ В избранное"
         fav_cb = f"fav_add:{tid}"
 
-    status = get_title_status(user_data, tid) or "planned"
-    status_label = TITLE_STATUSES.get(status, TITLE_STATUSES["planned"])
+    kb = [[InlineKeyboardButton(fav_text, callback_data=fav_cb)]]
 
-    kb = []
-    kb.append([InlineKeyboardButton(fav_text, callback_data=fav_cb)])
+    post_url = title_channel_url(title)
+    if post_url:
+        quality = "💠 4K" if title.get("has_4k") else "📺 Пост"
+        kb.append([InlineKeyboardButton(f"{quality} · Открыть в канале", url=post_url)])
 
-    st_row = [
-        InlineKeyboardButton("📌 В планах", callback_data=f"st_set:{tid}:planned"),
-        InlineKeyboardButton("👀 Смотрю", callback_data=f"st_set:{tid}:watching"),
-    ]
-    kb.append(st_row)
-
-    st_row2 = [
-        InlineKeyboardButton("✅ Просмотрено", callback_data=f"st_set:{tid}:completed"),
-        InlineKeyboardButton("⛔ Забросил", callback_data=f"st_set:{tid}:dropped"),
-    ]
-    kb.append(st_row2)
+    kb.append(
+        [
+            InlineKeyboardButton("📌 В планах", callback_data=f"st_set:{tid}:planned"),
+            InlineKeyboardButton("👀 Смотрю", callback_data=f"st_set:{tid}:watching"),
+        ]
+    )
+    kb.append(
+        [
+            InlineKeyboardButton("✅ Просмотрено", callback_data=f"st_set:{tid}:completed"),
+            InlineKeyboardButton("⛔ Забросил", callback_data=f"st_set:{tid}:dropped"),
+        ]
+    )
 
     if title.get("top150"):
-        kb.append([InlineKeyboardButton("🏆 Засчитать в 150 (только если Просмотрено)", callback_data=f"st_set:{tid}:completed")])
+        kb.append([InlineKeyboardButton("🏆 Засчитать в 150 (Просмотрено)", callback_data=f"st_set:{tid}:completed")])
 
+    kb.append([InlineKeyboardButton("📚 К каталогу", callback_data="catpage:1")])
     kb.append([InlineKeyboardButton("⬅️ Главное меню", callback_data="main_menu")])
     return InlineKeyboardMarkup(kb)
 
@@ -1062,6 +1283,12 @@ def build_section_keyboard(section: str | None = None) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(keyboard)
 
 
+def _card_value(value) -> str:
+    if _placeholder_value(value):
+        return ""
+    return html_escape(str(value))
+
+
 def build_premium_card(title: dict, user_data: dict | None = None) -> str:
     access = title.get("min_access", "free")
     access_label = {
@@ -1070,55 +1297,101 @@ def build_premium_card(title: dict, user_data: dict | None = None) -> str:
         "vip": "VIP-доступ",
     }.get(access, "Ограниченный доступ")
 
-    genres_raw = title.get("genres", "-")
-    if genres_raw and genres_raw != "-":
-        genres_text = format_genres(genres_raw, max_tags=3, line_limit=40)
-    else:
-        genres_text = "-"
-
     badge = title_top150_badge(title)
-    badge_line = f"{badge}\n\n" if badge else ""
+    st = get_title_status(user_data, title["id"]) if user_data is not None else None
+    post_id = title.get("channel_post_id")
+    has_4k = bool(title.get("has_4k"))
 
-    status_line = ""
-    if user_data is not None:
-        st = get_title_status(user_data, title["id"])
-        if st:
-            status_line = f"🎯 <b>Твой статус:</b> {TITLE_STATUSES.get(st, st)}\n\n"
+    lines = [f"🎬 ⭐ <b>{html_escape(str(title.get('name', 'Без названия')))}</b>"]
+    season = _card_value(title.get("season"))
+    if season:
+        lines.append(season)
+    lines.extend(["", "━━━━━━━━━━━━━━━━━━━━", ""])
 
-    return (
-        f"🎬 ⭐ <b>{title['name']}</b>\n"
-        f"{title.get('season', 'Сезон 1')} · ТВ-сериал\n\n"
-        "━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"{badge_line}"
-        f"{status_line}"
-        "📌 <b>Информация</b>\n"
-        f"📅 Статус: {title.get('status', 'Вышел')}\n"
-        f"🎞 Эпизодов: {title.get('episodes', '??')}\n"
-        f"📆 Год: {title.get('year', '----')}\n"
-        f"🏢 Студия: {title.get('studio', '-')}\n"
-        f"✍ Автор: {title.get('author', '-')}\n"
-        f"🎬 Режиссёр: {title.get('director', '-')}\n"
-        f"🔊 Озвучки: {title.get('voice', '-')}\n\n"
-        "━━━━━━━━━━━━━━━━━━━━\n\n"
-        "📊 <b>Рейтинги</b>\n"
-        f"📈 Shikimori: {title.get('shiki', '-')}\n"
-        f"🍿 IMDb: {title.get('imdb', '-')}\n"
-        f"🎥 Кинопоиск: {title.get('kp', '-')}\n\n"
-        "━━━━━━━━━━━━━━━━━━━━\n\n"
-        "🏷 <b>Жанры</b>\n"
-        f"{genres_text}\n\n"
-        "━━━━━━━━━━━━━━━━━━━━\n\n"
-        "📂 <b>Сезоны / Плейлисты</b>\n"
-        f"{title.get('playlist', 'Ссылка на плейлист появится позже')}\n\n"
-        "━━━━━━━━━━━━━━━━━━━━\n\n"
-        "📝 <b>Описание</b>\n"
-        f"{title.get('desc', '-')}\n\n"
-        "━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"🔑 Доступ: {access_label}\n\n"
-        "💠 <b>AnimeHUB | Dream — 4K Upscale Edition</b>\n"
-        "Доступно улучшенное качество до 4K.\n\n"
-        "⭐ Добавить в избранное → @AnimeHubDreamBot\n"
+    if badge:
+        lines.extend([badge, ""])
+    if st:
+        lines.extend([f"🎯 <b>Твой статус:</b> {TITLE_STATUSES.get(st, st)}", ""])
+
+    info = []
+    for icon, label, key in (
+        ("📅", "Статус", "status"),
+        ("🎞", "Эпизодов", "episodes"),
+        ("📆", "Год", "year"),
+        ("🏢", "Студия", "studio"),
+        ("✍", "Автор", "author"),
+        ("🎬", "Режиссёр", "director"),
+        ("🔊", "Озвучки", "voice"),
+    ):
+        value = _card_value(title.get(key))
+        if value:
+            info.append(f"{icon} {label}: {value}")
+    if info:
+        lines.extend(["📌 <b>Информация</b>", *info, "", "━━━━━━━━━━━━━━━━━━━━", ""])
+
+    ratings = []
+    for icon, label, key in (("📈", "Shikimori", "shiki"), ("🍿", "IMDb", "imdb"), ("🎥", "Кинопоиск", "kp")):
+        value = _card_value(title.get(key))
+        if value:
+            ratings.append(f"{icon} {label}: {value}")
+    if ratings:
+        lines.extend(["📊 <b>Рейтинги</b>", *ratings, "", "━━━━━━━━━━━━━━━━━━━━", ""])
+
+    genres = _card_value(title.get("genres"))
+    if genres:
+        lines.extend(["🏷 <b>Жанры</b>", format_genres(genres, max_tags=6, line_limit=60), "", "━━━━━━━━━━━━━━━━━━━━", ""])
+
+    playlist = _card_value(title.get("playlist"))
+    if playlist:
+        lines.extend(["📂 <b>Сезоны / Плейлисты</b>", playlist, "", "━━━━━━━━━━━━━━━━━━━━", ""])
+
+    desc = _card_value(title.get("desc"))
+    if desc:
+        lines.extend(["📝 <b>Описание</b>", desc, "", "━━━━━━━━━━━━━━━━━━━━", ""])
+
+    lines.append(f"🔑 Доступ: {access_label}")
+    lines.append(f"💠 4K Upscale: <b>{'✅ доступно' if has_4k else '❌ пока нет'}</b>")
+    if post_id:
+        lines.append(f"📣 Пост в AnimeHUB | Dream: <b>#{post_id}</b>")
+    lines.extend(["", "⭐ Добавляй в избранное и отмечай прогресс кнопками ниже."])
+
+    return "\n".join(lines)
+
+
+def build_catalog_page(titles: list[dict], user_data: dict, page: int) -> tuple[str, InlineKeyboardMarkup]:
+    available = [t for t in titles if has_access(user_data, t.get("min_access", "free"))]
+    available.sort(key=lambda t: norm_title(t.get("name", "")))
+    total = len(available)
+    total_pages = max(1, (total + CATALOG_PAGE_SIZE - 1) // CATALOG_PAGE_SIZE)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * CATALOG_PAGE_SIZE
+    chunk = available[start:start + CATALOG_PAGE_SIZE]
+
+    rows = []
+    for t in chunk:
+        quality = "💠" if t.get("has_4k") else "▫️"
+        top = "🏆" if t.get("top150") else ""
+        label = f"{quality}{top} {_short(t.get('name'), 44)}"
+        rows.append([InlineKeyboardButton(label, callback_data=f"cat:{t['id']}")])
+
+    nav = []
+    if page > 1:
+        nav.append(InlineKeyboardButton("⬅️", callback_data=f"catpage:{page-1}"))
+    nav.append(InlineKeyboardButton(f"{page}/{total_pages}", callback_data="catnoop"))
+    if page < total_pages:
+        nav.append(InlineKeyboardButton("➡️", callback_data=f"catpage:{page+1}"))
+    rows.append(nav)
+    rows.append([InlineKeyboardButton("🔎 Поиск — /search название", callback_data="catnoop")])
+    rows.append([InlineKeyboardButton("⬅️ Главное меню", callback_data="main_menu")])
+
+    four_k = sum(1 for t in available if t.get("has_4k"))
+    text = (
+        "📚 <b>Каталог AnimeHUB | Dream</b>\n\n"
+        f"Тайтлов: <b>{total}</b> · с 4K: <b>{four_k}</b>\n"
+        "💠 — есть 4K · ▫️ — 4K пока нет · 🏆 — входит в Top-150\n\n"
+        "Нажми на тайтл, чтобы открыть его карточку."
     )
+    return text, InlineKeyboardMarkup(rows)
 
 
 TOP150_PAGE_SIZE = 25
@@ -1271,8 +1544,7 @@ async def send_section(update: Update, context: ContextTypes.DEFAULT_TYPE, data,
         return
 
     if section_key == "titles":
-        text = SECTION_TEXTS["titles"] + "\n\n" + "Чтобы открыть карточку:\n<code>/title id</code>\n\n" + "Пример:\n<code>/title solo_leveling</code>"
-        kb = build_section_keyboard("titles")
+        text, kb = build_catalog_page(titles, user_data, 1)
         if from_callback:
             await update.callback_query.edit_message_text(text, reply_markup=kb)
         else:
@@ -1706,7 +1978,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "• <code>/admin</code> – админ-панель\n"
             "• <code>/profile</code> – мой профиль\n"
             "• <code>/myid</code> – мой Telegram ID\n"
-            "• <code>/title id</code> – карточка тайтла\n"
+            "• <code>/title id</code> – карточка тайтла (или открой через каталог)\n"
             "• <code>/search текст</code> – поиск по постам и тайтлам\n"
             "• <code>/code код</code> – ввести код доступа\n"
             "• <code>/weekly</code> – недельный прогресс по 150\n\n"
@@ -1747,7 +2019,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "• <code>/help</code> – это меню\n"
             "• <code>/profile</code> – мой профиль\n"
             "• <code>/myid</code> – мой Telegram ID\n"
-            "• <code>/title id</code> – карточка тайтла\n"
+            "• <code>/title id</code> – карточка тайтла (или открой через каталог)\n"
             "• <code>/search текст</code> – поиск по постам и тайтлам\n"
             "• <code>/weekly</code> – мой недельный прогресс по 150\n\n"
             "⭐ <b>Избранное и «150 лучших»</b>\n"
@@ -1814,15 +2086,16 @@ def parse_search_filters(raw: str) -> tuple[str, dict]:
     tokens = raw.split()
     filters_out = {}
     qparts = []
-    for t in tokens:
-        if ":" in t:
-            k, v = t.split(":", 1)
+    known_filters = {"studio", "year", "status", "genre", "4k"}
+    for token in tokens:
+        if ":" in token:
+            k, v = token.split(":", 1)
             k = k.strip().lower()
             v = v.strip()
-            if k and v:
+            if k in known_filters and v:
                 filters_out[k] = v
-        else:
-            qparts.append(t)
+                continue
+        qparts.append(token)
     return " ".join(qparts).strip().lower(), filters_out
 
 
@@ -1864,6 +2137,8 @@ async def handle_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     for t in titles:
         name = (t.get("name") or "").lower()
         tid = (t.get("id") or "").lower()
+        aliases = " ".join(str(x) for x in t.get("aliases", []) if x).lower()
+        post_id = str(t.get("channel_post_id") or "")
         studio = (t.get("studio") or "").lower()
         year = (t.get("year") or "").lower()
         status = (t.get("status") or "").lower()
@@ -1871,7 +2146,9 @@ async def handle_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
         ok = True
         if query:
-            if query not in name and query not in tid:
+            nq = norm_title(query)
+            haystack = " ".join([norm_title(name), norm_title(tid), norm_title(aliases), post_id])
+            if nq not in haystack:
                 ok = False
 
         if ok and "studio" in flt:
@@ -1885,6 +2162,10 @@ async def handle_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 ok = False
         if ok and "genre" in flt:
             if flt["genre"].lower() not in genres:
+                ok = False
+        if ok and "4k" in flt:
+            want_4k = flt["4k"].strip().lower() in {"1", "true", "yes", "да", "есть"}
+            if bool(t.get("has_4k")) != want_4k:
                 ok = False
 
         if ok:
@@ -1916,7 +2197,9 @@ async def handle_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 extra = f" (🏆 📜#{p})"
             elif m:
                 extra = f" (🏆 ⭐#{m})"
-        lines.append(f"• <b>{t['name']}</b>{extra} — <code>/title {t['id']}</code>")
+        quality = "💠4K" if t.get("has_4k") else "▫️HD"
+        post = f" · пост #{t.get('channel_post_id')}" if t.get("channel_post_id") else ""
+        lines.append(f"• <b>{t['name']}</b>{extra} · {quality}{post} — <code>/title {t['id']}</code>")
     await update.effective_message.reply_text("\n".join(lines))
 
 
@@ -2460,6 +2743,8 @@ ADMIN_TITLE_FIELDS = {
     "genres": "Жанры",
     "playlist": "Плейлист",
     "desc": "Описание",
+    "channel_post_id": "ID поста канала",
+    "aliases": "Алиасы через |",
 }
 
 SUGGESTION_STATUS_LABELS = {
@@ -2566,6 +2851,23 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await show_admin_home(update, context, data)
 
 
+async def merged_channel_posts(data: dict) -> dict:
+    """Реестр постов: объединяет исторические ссылки каталога и посты, созданные ботом."""
+    registry = {str(mid): dict(info) for mid, info in data.get("posts", {}).items() if isinstance(info, dict)}
+    for title in await load_titles():
+        post_id = title.get("channel_post_id")
+        try:
+            mid = str(int(post_id))
+        except (TypeError, ValueError):
+            continue
+        info = registry.setdefault(mid, {})
+        info.setdefault("title_id", title.get("id"))
+        info.setdefault("created_at", 0)
+        info.setdefault("caption", None)
+        info["known_catalog_post"] = True
+    return registry
+
+
 async def show_admin_home(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict) -> None:
     users = data.get("users", {})
     activated = sum(1 for u in users.values() if u.get("activated"))
@@ -2573,11 +2875,12 @@ async def show_admin_home(update: Update, context: ContextTypes.DEFAULT_TYPE, da
         1 for item in data.get("suggestions", {}).values() if item.get("status", "new") == "new"
     )
     titles = await load_titles()
+    merged_posts = await merged_channel_posts(data)
     text = (
         "🛠 <b>AnimeHUB | Dream — Админ-панель</b>\n\n"
         f"👥 Активных пользователей: <b>{activated}</b>\n"
         f"🎬 Тайтлов в каталоге: <b>{len(titles)}</b>\n"
-        f"📝 Постов в реестре: <b>{len(data.get('posts', {}))}</b>\n"
+        f"📝 Постов в реестре: <b>{len(merged_posts)}</b>\n"
         f"📩 Новых предложений: <b>{new_suggestions}</b>\n\n"
         "Здесь собраны основные операции по каналу и боту."
     )
@@ -2594,9 +2897,11 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
     banned = sum(1 for v in data.get("banned", {}).values() if v)
     hot = sum(1 for t in titles if t.get("hot"))
     top150 = sum(1 for t in titles if t.get("top150"))
+    four_k = sum(1 for t in titles if t.get("has_4k"))
     suggestions = data.get("suggestions", {})
     new_suggestions = sum(1 for x in suggestions.values() if x.get("status", "new") == "new")
     stats = data.get("stats", {})
+    merged_posts = await merged_channel_posts(data)
     sections = stats.get("sections", {})
     top_sections = sorted(sections.items(), key=lambda x: x[1], reverse=True)[:4]
     section_text = "\n".join(f"• {html_escape(str(k))}: <b>{v}</b>" for k, v in top_sections) or "• пока нет данных"
@@ -2607,8 +2912,8 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
         "📊 <b>Дашборд</b>\n\n"
         f"👥 Пользователи: <b>{total_users}</b> · активированы <b>{activated}</b>\n"
         f"🤝 Friend: <b>{friends}</b> · 💎 VIP: <b>{vips}</b> · 🚫 бан: <b>{banned}</b>\n\n"
-        f"🎬 Тайтлы: <b>{len(titles)}</b> · 🔥 hot: <b>{hot}</b> · 🏆 Top-150: <b>{top150}</b>\n"
-        f"📝 Посты: <b>{len(data.get('posts', {}))}</b> · создано ботом: <b>{stats.get('posts_created', 0)}</b>\n"
+        f"🎬 Тайтлы: <b>{len(titles)}</b> · 💠 4K: <b>{four_k}</b> · 🔥 hot: <b>{hot}</b> · 🏆 Top-150: <b>{top150}</b>\n"
+        f"📝 Посты: <b>{len(merged_posts)}</b> · создано ботом: <b>{stats.get('posts_created', 0)}</b>\n"
         f"📩 Предложения: <b>{len(suggestions)}</b> · новых: <b>{new_suggestions}</b>\n"
         f"📢 Рассылок: <b>{stats.get('broadcasts_sent', 0)}</b> · доставок: <b>{stats.get('broadcast_recipients', 0)}</b>\n\n"
         "📈 <b>Популярные разделы</b>\n"
@@ -2671,30 +2976,39 @@ async def show_admin_title_card(update: Update, context: ContextTypes.DEFAULT_TY
         await _admin_render(update, "Тайтл не найден.", InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ К тайтлам", callback_data="adm:t:list:1")]]))
         return
     access = t.get("min_access", "free")
+    post_id = t.get("channel_post_id") or "—"
     text = (
         f"🎬 <b>{html_escape(str(t.get('name', tid)))}</b>\n"
         f"<code>{html_escape(tid)}</code>\n\n"
         f"📅 {html_escape(str(t.get('year', '—')))} · 🎞 {html_escape(str(t.get('episodes', '—')))}\n"
         f"📌 {html_escape(str(t.get('status', '—')))}\n"
         f"🏢 {html_escape(str(t.get('studio', '—')))}\n"
+        f"📣 Пост: <b>#{html_escape(str(post_id))}</b>\n"
+        f"💠 4K: <b>{'есть' if t.get('has_4k') else 'нет'}</b>\n"
         f"🔑 Доступ: <b>{html_escape(access)}</b>\n"
         f"🔥 Популярное: <b>{'да' if t.get('hot') else 'нет'}</b>\n"
         f"🏆 Top-150: <b>{'да' if t.get('top150') else 'нет'}</b>\n\n"
         f"🏷 {_short(t.get('genres'), 100)}"
     )
-    kb = InlineKeyboardMarkup(
+    rows = [
         [
-            [
-                InlineKeyboardButton("🔥 Вкл/выкл Hot", callback_data=f"adm:t:hot:{tid}"),
-                InlineKeyboardButton("🔑 Сменить доступ", callback_data=f"adm:t:access:{tid}"),
-            ],
-            [InlineKeyboardButton("✏️ Редактировать поля", callback_data=f"adm:t:fields:{tid}")],
-            [InlineKeyboardButton("👁 Предпросмотр карточки", callback_data=f"adm:t:preview:{tid}")],
+            InlineKeyboardButton("🔥 Вкл/выкл Hot", callback_data=f"adm:t:hot:{tid}"),
+            InlineKeyboardButton("💠 Вкл/выкл 4K", callback_data=f"adm:t:4k:{tid}"),
+        ],
+        [InlineKeyboardButton("🔑 Сменить доступ", callback_data=f"adm:t:access:{tid}")],
+        [InlineKeyboardButton("✏️ Редактировать поля", callback_data=f"adm:t:fields:{tid}")],
+        [InlineKeyboardButton("👁 Предпросмотр карточки", callback_data=f"adm:t:preview:{tid}")],
+    ]
+    url = title_channel_url(t)
+    if url:
+        rows.append([InlineKeyboardButton("📣 Открыть пост в канале", url=url)])
+    rows.extend(
+        [
             [InlineKeyboardButton("🗑 Удалить тайтл", callback_data=f"adm:t:delete:{tid}")],
             [InlineKeyboardButton("⬅️ К тайтлам", callback_data="adm:t:list:1")],
         ]
     )
-    await _admin_render(update, text, kb)
+    await _admin_render(update, text, InlineKeyboardMarkup(rows))
 
 
 async def show_admin_title_fields(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict, tid: str) -> None:
@@ -2886,7 +3200,7 @@ async def show_admin_suggestion_card(update: Update, context: ContextTypes.DEFAU
 
 
 async def show_admin_posts(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict, page: int = 1) -> None:
-    posts = list(data.get("posts", {}).items())
+    posts = list((await merged_channel_posts(data)).items())
     posts.sort(key=lambda x: int(x[0]) if str(x[0]).isdigit() else 0, reverse=True)
     total_pages = max(1, (len(posts) + ADMIN_POST_PAGE_SIZE - 1) // ADMIN_POST_PAGE_SIZE)
     page = max(1, min(page, total_pages))
@@ -2918,7 +3232,7 @@ async def show_admin_posts(update: Update, context: ContextTypes.DEFAULT_TYPE, d
 
 
 async def show_admin_post_card(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict, mid: str) -> None:
-    info = data.get("posts", {}).get(str(mid))
+    info = (await merged_channel_posts(data)).get(str(mid))
     if not info:
         await show_admin_posts(update, context, data, 1)
         return
@@ -3104,6 +3418,9 @@ async def handle_admin_text_input(update: Update, context: ContextTypes.DEFAULT_
             "desc": "-",
             "min_access": "free",
             "hot": False,
+            "has_4k": False,
+            "channel_post_id": None,
+            "aliases": [],
             "added_at": int(time.time()),
         }
         titles.append(title)
@@ -3130,7 +3447,20 @@ async def handle_admin_text_input(update: Update, context: ContextTypes.DEFAULT_
         if len(value) > (2200 if field == "desc" else 700):
             await update.effective_message.reply_text("Значение слишком длинное.")
             return
-        target[field] = value
+        if field == "channel_post_id":
+            if value == "-":
+                target[field] = None
+            else:
+                try:
+                    target[field] = int(value)
+                    target["channel_post_deleted"] = False
+                except ValueError:
+                    await update.effective_message.reply_text("ID поста должен быть числом.")
+                    return
+        elif field == "aliases":
+            target[field] = [x.strip() for x in value.split("|") if x.strip()] if value != "-" else []
+        else:
+            target[field] = value
         await save_titles(titles)
         add_audit(data, admin_id, "title_edit", tid, ADMIN_TITLE_FIELDS[field])
         await save_data(data)
@@ -3290,6 +3620,18 @@ async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TY
             await save_data(data)
         await show_admin_title_card(update, context, data, tid)
         return
+    if data_str.startswith("adm:t:4k:"):
+        tid = data_str.split(":", 3)[3]
+        titles = await load_titles()
+        t = next((x for x in titles if x.get("id") == tid), None)
+        if t:
+            t["has_4k"] = not bool(t.get("has_4k"))
+            await save_titles(titles)
+            add_audit(data, admin_id, "title_4k", tid, str(t["has_4k"]))
+            await save_data(data)
+        await show_admin_title_card(update, context, data, tid)
+        return
+
     if data_str.startswith("adm:t:access:"):
         tid = data_str.split(":", 3)[3]
         titles = await load_titles()
@@ -3450,7 +3792,7 @@ async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TY
             logger.exception("Не удалось сделать репост поста %s", mid)
             await update.effective_message.reply_text("Не удалось пересоздать пост. Проверь права бота и существование сообщения.")
             return
-        old = data.get("posts", {}).get(mid, {})
+        old = (await merged_channel_posts(data)).get(mid, {})
         data.setdefault("posts", {})[str(m.message_id)] = {
             "title_id": old.get("title_id"),
             "created_at": int(time.time()),
@@ -3471,6 +3813,15 @@ async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TY
             await update.effective_message.reply_text("Не удалось удалить пост из канала. Проверь права бота.")
             return
         data.get("posts", {}).pop(mid, None)
+        titles = await load_titles()
+        changed_titles = False
+        for title in titles:
+            if str(title.get("channel_post_id") or "") == mid:
+                title["channel_post_id"] = None
+                title["channel_post_deleted"] = True
+                changed_titles = True
+        if changed_titles:
+            await save_titles(titles)
         add_audit(data, admin_id, "post_delete", mid)
         await save_data(data)
         await show_admin_posts(update, context, data, 1)
@@ -3737,6 +4088,34 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     if data_str == "prof_friends":
         await handle_friend_list(update, context)
+        return
+
+    if data_str == "catnoop":
+        return
+
+    if data_str.startswith("catpage:"):
+        try:
+            page = int(data_str.split(":", 1)[1])
+        except ValueError:
+            page = 1
+        titles = await load_titles()
+        text, kb = build_catalog_page(titles, user_data, page)
+        await query.edit_message_text(text, reply_markup=kb)
+        return
+
+    if data_str.startswith("cat:"):
+        tid = data_str.split(":", 1)[1]
+        title = TITLES_BY_ID.get(tid)
+        if not title:
+            await query.edit_message_text("Тайтл не найден.")
+            return
+        required = title.get("min_access", "free")
+        if not has_access(user_data, required):
+            await query.answer("Недостаточный уровень доступа.", show_alert=True)
+            return
+        sync_watched_150_rule_b(user_data, title)
+        await save_data(data)
+        await query.edit_message_text(build_premium_card(title, user_data=user_data), reply_markup=build_title_keyboard(title, user_data))
         return
 
     if data_str.startswith("top150_"):
