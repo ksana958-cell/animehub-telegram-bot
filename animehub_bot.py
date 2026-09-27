@@ -25,6 +25,7 @@ import re
 import hashlib
 import logging
 import secrets
+import shutil
 from html import escape as html_escape
 
 
@@ -57,8 +58,8 @@ CONFIG = {
     # Секреты никогда не храним в Git. BOT_TOKEN задаётся только в панели хостинга / env.
     "BOT_TOKEN": os.getenv("BOT_TOKEN", "").strip(),
     "CHANNEL_USERNAME": os.getenv("CHANNEL_USERNAME", "@AnimeHUB_Dream").strip(),
-    # На BotHost DATA_DIR=/app/data. Если DATA_FILE/TITLES_FILE не переопределены,
-    # база и каталог автоматически хранятся в постоянном volume.
+    # BotHost использует DATA_DIR=/app/data как постоянное хранилище.
+    # DATA_FILE/TITLES_FILE при необходимости можно переопределить отдельно.
     "DATA_DIR": DATA_DIR,
     "DATA_FILE": os.getenv("DATA_FILE", os.path.join(DATA_DIR, "bot_data.json")).strip(),
     "TITLES_FILE": os.getenv("TITLES_FILE", os.path.join(DATA_DIR, "titles.json")).strip(),
@@ -106,6 +107,7 @@ def configure_logging() -> logging.Logger:
 
 
 logger = configure_logging()
+BOT_STARTED_AT = time.time()
 
 
 def validate_runtime_config() -> None:
@@ -120,7 +122,7 @@ def validate_runtime_config() -> None:
     if not ADMINS:
         raise RuntimeError("Не задан ни один root-admin. Укажите ROOT_ADMIN_IDS.")
 
-    # Проверяем/создаём директории для постоянных данных заранее.
+    # Подготавливаем директории постоянных данных до запуска Telegram polling.
     for storage_path in (DATA_FILE, TITLES_FILE):
         parent = os.path.dirname(os.path.abspath(storage_path))
         try:
@@ -679,12 +681,16 @@ def default_data():
             "posts_edited": 0,
             "drafts_created": 0,
             "reposts": 0,
+            "broadcasts_sent": 0,
+            "broadcast_recipients": 0,
         },
         "friend_requests": {},
         "posts": {},
         "banned": {},
         "admins": ADMINS[:],
         "invites": {},
+        "suggestions": {},
+        "audit_log": [],
     }
 
 
@@ -713,16 +719,18 @@ async def load_data():
         if "sections" not in data["stats"]:
             data["stats"]["sections"] = {}
 
-        for key in ["random_used", "started", "posts_created", "posts_edited", "drafts_created", "reposts"]:
+        for key in ["random_used", "started", "posts_created", "posts_edited", "drafts_created", "reposts", "broadcasts_sent", "broadcast_recipients"]:
             if key not in data["stats"]:
                 data["stats"][key] = 0
 
-        for k in ["friend_requests", "users", "posts", "banned", "invites"]:
+        for k in ["friend_requests", "users", "posts", "banned", "invites", "suggestions"]:
             if k not in data:
                 data[k] = {}
 
         if "admins" not in data:
             data["admins"] = ADMINS[:]
+        if "audit_log" not in data or not isinstance(data["audit_log"], list):
+            data["audit_log"] = []
         if "version" not in data:
             data["version"] = 1
 
@@ -1018,7 +1026,7 @@ def build_title_keyboard(title: dict, user_data: dict) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(kb)
 
 
-def build_main_menu_keyboard() -> InlineKeyboardMarkup:
+def build_main_menu_keyboard(is_admin_user: bool = False) -> InlineKeyboardMarkup:
     keyboard = [
         [InlineKeyboardButton("📚 Аниме по тайтлам", callback_data="sec_titles")],
         [InlineKeyboardButton("🔥 Популярно сейчас", callback_data="sec_hot_now")],
@@ -1027,13 +1035,17 @@ def build_main_menu_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton("🎲 Случайный тайтл", callback_data="rand_title")],
         [InlineKeyboardButton("👤 Мой профиль", callback_data="my_profile")],
         [InlineKeyboardButton("📩 Предложить тайтл", callback_data="suggest_info")],
+    ]
+    if is_admin_user:
+        keyboard.append([InlineKeyboardButton("🛠 Админ-панель", callback_data="adm:home")])
+    keyboard.append(
         [
             InlineKeyboardButton(
                 "🏠 Открыть канал",
                 url=f"https://t.me/{CHANNEL_USERNAME.lstrip('@')}",
             )
-        ],
-    ]
+        ]
+    )
     return InlineKeyboardMarkup(keyboard)
 
 
@@ -1182,7 +1194,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, dat
         "• 🎬 «Полнометражки»\n\n"
         "Выбери раздел из меню ниже."
     )
-    reply_markup = build_main_menu_keyboard()
+    reply_markup = build_main_menu_keyboard(is_admin(data, update.effective_user.id))
     if update.message:
         await send_with_cleanup(update, context, text, reply_markup=reply_markup)
     elif update.callback_query:
@@ -1401,15 +1413,20 @@ async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     args = context.args
     if args:
         arg0 = args[0].strip()
-        if arg0.startswith("friend_"):
+        if arg0.startswith(("friend_", "access_")):
             token = arg0
             invites = data.get("invites", {})
             hashed_key = invite_storage_key(token)
             # hashed_key — новый безопасный формат; token — поддержка старых ссылок до их истечения.
             storage_key = hashed_key if hashed_key in invites else token
             info = invites.get(storage_key)
-            if info and info.get("type") == "friend":
-                ensure_friend_access(user_data)
+            if info and info.get("type") in ("friend", "access"):
+                if info.get("type") == "friend":
+                    ensure_friend_access(user_data)
+                else:
+                    level = info.get("level", "friend")
+                    if level in ACCESS_LEVELS and ACCESS_LEVELS[level] > ACCESS_LEVELS.get(user_data.get("access", "free"), 0):
+                        user_data["access"] = level
                 user_data["activated"] = True
                 info["uses"] = info.get("uses", 0) + 1
                 max_uses = info.get("max_uses")
@@ -1417,9 +1434,10 @@ async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                     invites.pop(storage_key, None)
                 data["invites"] = invites
                 await save_data(data)
+                granted_level = user_data.get("access", "friend")
                 text = (
-                    "🤝 Ты вошёл по приглашению друга.\n\n"
-                    "Профиль активирован, уровень доступа: <b>friend</b>.\n\n"
+                    "🎟 Приглашение активировано.\n\n"
+                    f"Профиль активирован, уровень доступа: <b>{granted_level}</b>.\n\n"
                     "Открывай главное меню и выбирай тайтлы."
                 )
                 kb = InlineKeyboardMarkup([[InlineKeyboardButton("📚 Открыть главное меню", callback_data="main_menu")]])
@@ -1685,6 +1703,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "• <code>/start</code> – запустить бота\n"
             "• <code>/menu</code> – главное меню\n"
             "• <code>/help</code> – это меню\n"
+            "• <code>/admin</code> – админ-панель\n"
             "• <code>/profile</code> – мой профиль\n"
             "• <code>/myid</code> – мой Telegram ID\n"
             "• <code>/title id</code> – карточка тайтла\n"
@@ -2223,6 +2242,10 @@ async def handle_suggest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user = update.effective_user
     uid = user.id
 
+    if check_rate_limit(uid, "suggest", 10.0):
+        await update.effective_message.reply_text("Подожди немного перед следующим предложением.")
+        return
+
     if not context.args:
         await update.effective_message.reply_text(
             "Отправь предложение или идею в формате:\n"
@@ -2234,23 +2257,47 @@ async def handle_suggest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if not text:
         await update.effective_message.reply_text("Текст предложения пустой.")
         return
+    if len(text) > 2000:
+        await update.effective_message.reply_text("Предложение слишком длинное. Максимум — 2000 символов.")
+        return
+
+    suggestions = data.setdefault("suggestions", {})
+    numeric_ids = [int(x) for x in suggestions.keys() if str(x).isdigit()]
+    sid = str((max(numeric_ids) + 1) if numeric_ids else 1)
+    suggestions[sid] = {
+        "user_id": uid,
+        "username": user.username,
+        "full_name": user.full_name,
+        "text": text,
+        "status": "new",
+        "created_at": int(time.time()),
+        "updated_at": int(time.time()),
+    }
+    data["suggestions"] = suggestions
+    await save_data(data)
 
     admins_all = set(ADMINS) | set(data.get("admins", []))
+    kb = InlineKeyboardMarkup(
+        [[InlineKeyboardButton(f"📩 Открыть предложение #{sid}", callback_data=f"adm:s:view:{sid}")]]
+    )
     for aid in admins_all:
         try:
             await context.bot.send_message(
                 chat_id=aid,
                 text=(
-                    "📩 <b>Новое предложение от пользователя</b>\n\n"
+                    f"📩 <b>Новое предложение #{sid}</b>\n\n"
                     f"От: <a href='tg://user?id={uid}'>{uid}</a>\n\n"
                     f"Текст:\n{html_escape(text)}"
                 ),
+                reply_markup=kb,
                 parse_mode=ParseMode.HTML,
             )
         except Exception:
-            pass
+            logger.exception("Не удалось уведомить администратора %s о предложении %s", aid, sid)
 
-    await update.effective_message.reply_text("Спасибо! Твоё предложение отправлено админам.")
+    await update.effective_message.reply_text(
+        f"Спасибо! Предложение <b>#{sid}</b> сохранено и отправлено админам."
+    )
 
 
 async def handle_ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -2274,6 +2321,7 @@ async def handle_ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     banned = data.get("banned", {})
     banned[tid] = True
     data["banned"] = banned
+    add_audit(data, user_id, "user_ban_command", str(target_id))
     await save_data(data)
     await update.effective_message.reply_text(f"Пользователь {target_id} заблокирован в боте.")
 
@@ -2297,6 +2345,7 @@ async def handle_unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if tid in banned:
         banned.pop(tid, None)
         data["banned"] = banned
+        add_audit(data, user_id, "user_unban_command", str(target_id))
         await save_data(data)
         await update.effective_message.reply_text(f"Пользователь {target_id} разблокирован.")
     else:
@@ -2347,6 +2396,7 @@ async def handle_add_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     admins_list.append(target_id)
     data["admins"] = admins_list
+    add_audit(data, user_id, "admin_add_command", str(target_id))
     await save_data(data)
     await update.effective_message.reply_text(f"Пользователь {target_id} добавлен в админы.")
 
@@ -2379,8 +2429,1158 @@ async def handle_remove_admin(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     admins_list = [a for a in admins_list if a != target_id]
     data["admins"] = admins_list
+    add_audit(data, user_id, "admin_remove_command", str(target_id))
     await save_data(data)
     await update.effective_message.reply_text(f"Пользователь {target_id} убран из админов.")
+
+
+# =========================
+# ADMIN PANEL
+# =========================
+
+ADMIN_TITLE_PAGE_SIZE = 8
+ADMIN_USER_PAGE_SIZE = 8
+ADMIN_SUGGESTION_PAGE_SIZE = 8
+ADMIN_POST_PAGE_SIZE = 8
+ADMIN_AUDIT_LIMIT = 200
+
+ADMIN_TITLE_FIELDS = {
+    "name": "Название",
+    "season": "Сезон / формат",
+    "status": "Статус",
+    "episodes": "Эпизоды",
+    "year": "Год",
+    "studio": "Студия",
+    "author": "Автор",
+    "director": "Режиссёр",
+    "voice": "Озвучка",
+    "shiki": "Shikimori",
+    "imdb": "IMDb",
+    "kp": "Кинопоиск",
+    "genres": "Жанры",
+    "playlist": "Плейлист",
+    "desc": "Описание",
+}
+
+SUGGESTION_STATUS_LABELS = {
+    "new": "🆕 Новое",
+    "planned": "🕒 В планах",
+    "done": "✅ Выполнено",
+    "rejected": "❌ Отклонено",
+}
+
+
+def _admin_private_chat(update: Update) -> bool:
+    return bool(update.effective_chat and update.effective_chat.type == "private")
+
+
+def _fmt_time(ts: int | float | None) -> str:
+    if not ts:
+        return "—"
+    try:
+        return time.strftime("%d.%m.%Y %H:%M", time.localtime(float(ts)))
+    except (ValueError, TypeError, OSError):
+        return "—"
+
+
+def _fmt_bytes(size: int) -> str:
+    value = float(max(0, size))
+    for unit in ("Б", "КБ", "МБ", "ГБ"):
+        if value < 1024 or unit == "ГБ":
+            return f"{value:.1f} {unit}" if unit != "Б" else f"{int(value)} {unit}"
+        value /= 1024
+    return f"{value:.1f} ГБ"
+
+
+def _safe_file_size(path: str) -> int:
+    try:
+        return os.path.getsize(path)
+    except OSError:
+        return 0
+
+
+def _short(text: str | None, limit: int = 70) -> str:
+    clean = " ".join((text or "").split())
+    return clean if len(clean) <= limit else clean[: limit - 1] + "…"
+
+
+def add_audit(data: dict, admin_id: int, action: str, target: str = "", details: str = "") -> None:
+    log = data.setdefault("audit_log", [])
+    log.append(
+        {
+            "ts": int(time.time()),
+            "admin_id": admin_id,
+            "action": action,
+            "target": str(target or ""),
+            "details": _short(str(details or ""), 160),
+        }
+    )
+    if len(log) > ADMIN_AUDIT_LIMIT:
+        del log[:-ADMIN_AUDIT_LIMIT]
+
+
+async def _admin_render(update: Update, text: str, kb: InlineKeyboardMarkup | None = None) -> None:
+    if update.callback_query:
+        try:
+            await update.callback_query.edit_message_text(text, reply_markup=kb)
+            return
+        except Exception:
+            pass
+    await update.effective_message.reply_text(text, reply_markup=kb)
+
+
+def _admin_home_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton("📊 Дашборд", callback_data="adm:dash")],
+            [
+                InlineKeyboardButton("🎬 Тайтлы", callback_data="adm:t:list:1"),
+                InlineKeyboardButton("📝 Посты", callback_data="adm:p:list:1"),
+            ],
+            [
+                InlineKeyboardButton("👥 Пользователи", callback_data="adm:u:list:1"),
+                InlineKeyboardButton("📩 Предложения", callback_data="adm:s:list:1"),
+            ],
+            [
+                InlineKeyboardButton("📢 Рассылка", callback_data="adm:broadcast:start"),
+                InlineKeyboardButton("🔐 Доступы", callback_data="adm:access"),
+            ],
+            [
+                InlineKeyboardButton("🧰 Система", callback_data="adm:system"),
+                InlineKeyboardButton("📜 Журнал", callback_data="adm:audit"),
+            ],
+            [InlineKeyboardButton("⬅️ Главное меню", callback_data="main_menu")],
+        ]
+    )
+
+
+async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = await load_data()
+    if not is_admin(data, update.effective_user.id):
+        await update.effective_message.reply_text("Эта команда доступна только администраторам.")
+        return
+    if not _admin_private_chat(update):
+        await update.effective_message.reply_text("Админ-панель доступна только в личном чате с ботом.")
+        return
+    context.user_data.pop("admin_pending", None)
+    await show_admin_home(update, context, data)
+
+
+async def show_admin_home(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict) -> None:
+    users = data.get("users", {})
+    activated = sum(1 for u in users.values() if u.get("activated"))
+    new_suggestions = sum(
+        1 for item in data.get("suggestions", {}).values() if item.get("status", "new") == "new"
+    )
+    titles = await load_titles()
+    text = (
+        "🛠 <b>AnimeHUB | Dream — Админ-панель</b>\n\n"
+        f"👥 Активных пользователей: <b>{activated}</b>\n"
+        f"🎬 Тайтлов в каталоге: <b>{len(titles)}</b>\n"
+        f"📝 Постов в реестре: <b>{len(data.get('posts', {}))}</b>\n"
+        f"📩 Новых предложений: <b>{new_suggestions}</b>\n\n"
+        "Здесь собраны основные операции по каналу и боту."
+    )
+    await _admin_render(update, text, _admin_home_keyboard())
+
+
+async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict) -> None:
+    users = data.get("users", {})
+    titles = await load_titles()
+    total_users = len(users)
+    activated = sum(1 for u in users.values() if u.get("activated"))
+    friends = sum(1 for u in users.values() if u.get("access") == "friend")
+    vips = sum(1 for u in users.values() if u.get("access") == "vip")
+    banned = sum(1 for v in data.get("banned", {}).values() if v)
+    hot = sum(1 for t in titles if t.get("hot"))
+    top150 = sum(1 for t in titles if t.get("top150"))
+    suggestions = data.get("suggestions", {})
+    new_suggestions = sum(1 for x in suggestions.values() if x.get("status", "new") == "new")
+    stats = data.get("stats", {})
+    sections = stats.get("sections", {})
+    top_sections = sorted(sections.items(), key=lambda x: x[1], reverse=True)[:4]
+    section_text = "\n".join(f"• {html_escape(str(k))}: <b>{v}</b>" for k, v in top_sections) or "• пока нет данных"
+    uptime = max(0, int(time.time() - BOT_STARTED_AT))
+    hours, rem = divmod(uptime, 3600)
+    minutes = rem // 60
+    text = (
+        "📊 <b>Дашборд</b>\n\n"
+        f"👥 Пользователи: <b>{total_users}</b> · активированы <b>{activated}</b>\n"
+        f"🤝 Friend: <b>{friends}</b> · 💎 VIP: <b>{vips}</b> · 🚫 бан: <b>{banned}</b>\n\n"
+        f"🎬 Тайтлы: <b>{len(titles)}</b> · 🔥 hot: <b>{hot}</b> · 🏆 Top-150: <b>{top150}</b>\n"
+        f"📝 Посты: <b>{len(data.get('posts', {}))}</b> · создано ботом: <b>{stats.get('posts_created', 0)}</b>\n"
+        f"📩 Предложения: <b>{len(suggestions)}</b> · новых: <b>{new_suggestions}</b>\n"
+        f"📢 Рассылок: <b>{stats.get('broadcasts_sent', 0)}</b> · доставок: <b>{stats.get('broadcast_recipients', 0)}</b>\n\n"
+        "📈 <b>Популярные разделы</b>\n"
+        f"{section_text}\n\n"
+        f"⏱ Аптайм процесса: <b>{hours}ч {minutes}м</b>"
+    )
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton("🔄 Обновить", callback_data="adm:dash")],
+            [InlineKeyboardButton("⬅️ Админ-панель", callback_data="adm:home")],
+        ]
+    )
+    await _admin_render(update, text, kb)
+
+
+def _title_admin_label(t: dict) -> str:
+    hot = "🔥 " if t.get("hot") else ""
+    access = {"free": "🟢", "friend": "🟡", "vip": "💎"}.get(t.get("min_access", "free"), "⚪")
+    return f"{hot}{access} {_short(t.get('name'), 34)}"
+
+
+async def show_admin_titles(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict, page: int = 1) -> None:
+    titles = sorted(await load_titles(), key=lambda t: (t.get("name") or "").lower())
+    total_pages = max(1, (len(titles) + ADMIN_TITLE_PAGE_SIZE - 1) // ADMIN_TITLE_PAGE_SIZE)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * ADMIN_TITLE_PAGE_SIZE
+    chunk = titles[start : start + ADMIN_TITLE_PAGE_SIZE]
+    kb = []
+    for t in chunk:
+        kb.append([InlineKeyboardButton(_title_admin_label(t), callback_data=f"adm:t:view:{t['id']}")])
+    nav = []
+    if page > 1:
+        nav.append(InlineKeyboardButton("⬅️", callback_data=f"adm:t:list:{page-1}"))
+    nav.append(InlineKeyboardButton(f"{page}/{total_pages}", callback_data="adm:t:noop"))
+    if page < total_pages:
+        nav.append(InlineKeyboardButton("➡️", callback_data=f"adm:t:list:{page+1}"))
+    kb.append(nav)
+    kb.extend(
+        [
+            [
+                InlineKeyboardButton("➕ Добавить", callback_data="adm:t:add"),
+                InlineKeyboardButton("🔎 Найти", callback_data="adm:t:search"),
+            ],
+            [InlineKeyboardButton("⬅️ Админ-панель", callback_data="adm:home")],
+        ]
+    )
+    text = (
+        "🎬 <b>Управление тайтлами</b>\n\n"
+        f"Всего: <b>{len(titles)}</b>\n"
+        "🟢 free · 🟡 friend · 💎 VIP · 🔥 популярное\n\n"
+        "Выбери тайтл для редактирования."
+    )
+    await _admin_render(update, text, InlineKeyboardMarkup(kb))
+
+
+async def show_admin_title_card(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict, tid: str) -> None:
+    await load_titles()
+    t = TITLES_BY_ID.get(tid)
+    if not t:
+        await _admin_render(update, "Тайтл не найден.", InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ К тайтлам", callback_data="adm:t:list:1")]]))
+        return
+    access = t.get("min_access", "free")
+    text = (
+        f"🎬 <b>{html_escape(str(t.get('name', tid)))}</b>\n"
+        f"<code>{html_escape(tid)}</code>\n\n"
+        f"📅 {html_escape(str(t.get('year', '—')))} · 🎞 {html_escape(str(t.get('episodes', '—')))}\n"
+        f"📌 {html_escape(str(t.get('status', '—')))}\n"
+        f"🏢 {html_escape(str(t.get('studio', '—')))}\n"
+        f"🔑 Доступ: <b>{html_escape(access)}</b>\n"
+        f"🔥 Популярное: <b>{'да' if t.get('hot') else 'нет'}</b>\n"
+        f"🏆 Top-150: <b>{'да' if t.get('top150') else 'нет'}</b>\n\n"
+        f"🏷 {_short(t.get('genres'), 100)}"
+    )
+    kb = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("🔥 Вкл/выкл Hot", callback_data=f"adm:t:hot:{tid}"),
+                InlineKeyboardButton("🔑 Сменить доступ", callback_data=f"adm:t:access:{tid}"),
+            ],
+            [InlineKeyboardButton("✏️ Редактировать поля", callback_data=f"adm:t:fields:{tid}")],
+            [InlineKeyboardButton("👁 Предпросмотр карточки", callback_data=f"adm:t:preview:{tid}")],
+            [InlineKeyboardButton("🗑 Удалить тайтл", callback_data=f"adm:t:delete:{tid}")],
+            [InlineKeyboardButton("⬅️ К тайтлам", callback_data="adm:t:list:1")],
+        ]
+    )
+    await _admin_render(update, text, kb)
+
+
+async def show_admin_title_fields(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict, tid: str) -> None:
+    await load_titles()
+    if tid not in TITLES_BY_ID:
+        await show_admin_titles(update, context, data, 1)
+        return
+    rows = []
+    items = list(ADMIN_TITLE_FIELDS.items())
+    for i in range(0, len(items), 2):
+        row = []
+        for key, label in items[i : i + 2]:
+            row.append(InlineKeyboardButton(label, callback_data=f"adm:t:field:{tid}:{key}"))
+        rows.append(row)
+    rows.append([InlineKeyboardButton("⬅️ К тайтлу", callback_data=f"adm:t:view:{tid}")])
+    await _admin_render(
+        update,
+        "✏️ <b>Редактирование тайтла</b>\n\nВыбери поле, затем отправь новое значение одним сообщением.",
+        InlineKeyboardMarkup(rows),
+    )
+
+
+async def _admin_title_search_results(update: Update, query_text: str) -> None:
+    titles = await load_titles()
+    nq = norm_title(query_text)
+    results = [t for t in titles if nq in norm_title(t.get("name", "")) or nq in norm_title(t.get("id", ""))][:20]
+    if not results:
+        await update.effective_message.reply_text("По запросу ничего не найдено.")
+        return
+    kb = [[InlineKeyboardButton(_title_admin_label(t), callback_data=f"adm:t:view:{t['id']}")] for t in results]
+    kb.append([InlineKeyboardButton("⬅️ К тайтлам", callback_data="adm:t:list:1")])
+    await update.effective_message.reply_text(
+        f"🔎 Найдено: <b>{len(results)}</b>", reply_markup=InlineKeyboardMarkup(kb)
+    )
+
+
+def _user_display(uid: str, u: dict) -> str:
+    name = u.get("full_name") or ("@" + u.get("username") if u.get("username") else f"ID {uid}")
+    access = {"free": "🟢", "friend": "🟡", "vip": "💎"}.get(u.get("access", "free"), "⚪")
+    return f"{access} {_short(name, 34)}"
+
+
+async def show_admin_users(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict, page: int = 1) -> None:
+    users = list(data.get("users", {}).items())
+    users.sort(key=lambda item: item[1].get("created_at", 0), reverse=True)
+    total_pages = max(1, (len(users) + ADMIN_USER_PAGE_SIZE - 1) // ADMIN_USER_PAGE_SIZE)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * ADMIN_USER_PAGE_SIZE
+    chunk = users[start : start + ADMIN_USER_PAGE_SIZE]
+    kb = [[InlineKeyboardButton(_user_display(uid, u), callback_data=f"adm:u:view:{uid}")] for uid, u in chunk]
+    nav = []
+    if page > 1:
+        nav.append(InlineKeyboardButton("⬅️", callback_data=f"adm:u:list:{page-1}"))
+    nav.append(InlineKeyboardButton(f"{page}/{total_pages}", callback_data="adm:u:noop"))
+    if page < total_pages:
+        nav.append(InlineKeyboardButton("➡️", callback_data=f"adm:u:list:{page+1}"))
+    kb.append(nav)
+    kb.extend(
+        [
+            [InlineKeyboardButton("🔎 Найти пользователя", callback_data="adm:u:search")],
+            [InlineKeyboardButton("⬅️ Админ-панель", callback_data="adm:home")],
+        ]
+    )
+    await _admin_render(
+        update,
+        f"👥 <b>Пользователи</b>\n\nВсего записей: <b>{len(users)}</b>\nПоследние зарегистрированные — сверху.",
+        InlineKeyboardMarkup(kb),
+    )
+
+
+async def show_admin_user_card(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict, uid: str) -> None:
+    u = data.get("users", {}).get(str(uid))
+    if not u:
+        await _admin_render(update, "Пользователь не найден в базе.", InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ К пользователям", callback_data="adm:u:list:1")]]))
+        return
+    banned = bool(data.get("banned", {}).get(str(uid)))
+    admin_status = is_admin(data, int(uid))
+    name = html_escape(u.get("full_name") or "—")
+    username = html_escape("@" + u["username"] if u.get("username") else "—")
+    text = (
+        f"👤 <b>{name}</b>\n"
+        f"{username}\n"
+        f"ID: <code>{uid}</code>\n\n"
+        f"🔑 Доступ: <b>{html_escape(u.get('access', 'free'))}</b>\n"
+        f"⚡ Активирован: <b>{'да' if u.get('activated') else 'нет'}</b>\n"
+        f"🚫 Заблокирован: <b>{'да' if banned else 'нет'}</b>\n"
+        f"🛡 Администратор: <b>{'да' if admin_status else 'нет'}</b>\n\n"
+        f"⭐ Избранное: <b>{len(u.get('favorites', []))}</b>\n"
+        f"🏆 Top-150 просмотрено: <b>{len(u.get('watched_150', []))}</b>\n"
+        f"🤝 Друзья: <b>{len(u.get('friends', []))}</b>\n"
+        f"📅 В базе с: <b>{_fmt_time(u.get('created_at'))}</b>"
+    )
+    rows = [
+        [
+            InlineKeyboardButton("🟢 free", callback_data=f"adm:u:access:{uid}:free"),
+            InlineKeyboardButton("🟡 friend", callback_data=f"adm:u:access:{uid}:friend"),
+            InlineKeyboardButton("💎 VIP", callback_data=f"adm:u:access:{uid}:vip"),
+        ],
+        [InlineKeyboardButton("✉️ Написать пользователю", callback_data=f"adm:u:message:{uid}")],
+    ]
+    if banned:
+        rows.append([InlineKeyboardButton("✅ Разбанить", callback_data=f"adm:u:unban:{uid}")])
+    else:
+        rows.append([InlineKeyboardButton("🚫 Заблокировать", callback_data=f"adm:u:ban:{uid}")])
+    if is_root_admin(update.effective_user.id) and not is_root_admin(int(uid)):
+        if admin_status:
+            rows.append([InlineKeyboardButton("➖ Снять администратора", callback_data=f"adm:u:demote:{uid}")])
+        else:
+            rows.append([InlineKeyboardButton("➕ Сделать администратором", callback_data=f"adm:u:promote:{uid}")])
+    rows.append([InlineKeyboardButton("⬅️ К пользователям", callback_data="adm:u:list:1")])
+    await _admin_render(update, text, InlineKeyboardMarkup(rows))
+
+
+async def _admin_user_search_results(update: Update, data: dict, query_text: str) -> None:
+    q = query_text.strip().lower().lstrip("@")
+    results = []
+    for uid, u in data.get("users", {}).items():
+        if q == uid or q in (u.get("username") or "").lower() or q in (u.get("full_name") or "").lower():
+            results.append((uid, u))
+        if len(results) >= 20:
+            break
+    if not results:
+        await update.effective_message.reply_text("Пользователь не найден в локальной базе бота.")
+        return
+    kb = [[InlineKeyboardButton(_user_display(uid, u), callback_data=f"adm:u:view:{uid}")] for uid, u in results]
+    kb.append([InlineKeyboardButton("⬅️ К пользователям", callback_data="adm:u:list:1")])
+    await update.effective_message.reply_text(
+        f"🔎 Найдено: <b>{len(results)}</b>", reply_markup=InlineKeyboardMarkup(kb)
+    )
+
+
+async def show_admin_suggestions(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict, page: int = 1) -> None:
+    items = list(data.get("suggestions", {}).items())
+    priority = {"new": 0, "planned": 1, "done": 2, "rejected": 3}
+    items.sort(key=lambda x: (priority.get(x[1].get("status", "new"), 9), -x[1].get("created_at", 0)))
+    total_pages = max(1, (len(items) + ADMIN_SUGGESTION_PAGE_SIZE - 1) // ADMIN_SUGGESTION_PAGE_SIZE)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * ADMIN_SUGGESTION_PAGE_SIZE
+    chunk = items[start : start + ADMIN_SUGGESTION_PAGE_SIZE]
+    kb = []
+    for sid, item in chunk:
+        status = SUGGESTION_STATUS_LABELS.get(item.get("status", "new"), "•")
+        kb.append([InlineKeyboardButton(f"{status} #{sid} · {_short(item.get('text'), 28)}", callback_data=f"adm:s:view:{sid}")])
+    nav = []
+    if page > 1:
+        nav.append(InlineKeyboardButton("⬅️", callback_data=f"adm:s:list:{page-1}"))
+    nav.append(InlineKeyboardButton(f"{page}/{total_pages}", callback_data="adm:s:noop"))
+    if page < total_pages:
+        nav.append(InlineKeyboardButton("➡️", callback_data=f"adm:s:list:{page+1}"))
+    kb.append(nav)
+    kb.append([InlineKeyboardButton("⬅️ Админ-панель", callback_data="adm:home")])
+    new_count = sum(1 for _, x in items if x.get("status", "new") == "new")
+    await _admin_render(
+        update,
+        f"📩 <b>Предложения</b>\n\nВсего: <b>{len(items)}</b> · новых: <b>{new_count}</b>",
+        InlineKeyboardMarkup(kb),
+    )
+
+
+async def show_admin_suggestion_card(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict, sid: str) -> None:
+    item = data.get("suggestions", {}).get(str(sid))
+    if not item:
+        await show_admin_suggestions(update, context, data, 1)
+        return
+    uid = item.get("user_id")
+    status = SUGGESTION_STATUS_LABELS.get(item.get("status", "new"), item.get("status", "new"))
+    text = (
+        f"📩 <b>Предложение #{sid}</b>\n\n"
+        f"Статус: <b>{status}</b>\n"
+        f"От: <a href='tg://user?id={uid}'>{uid}</a>\n"
+        f"Создано: <b>{_fmt_time(item.get('created_at'))}</b>\n\n"
+        f"{html_escape(item.get('text', ''))}"
+    )
+    kb = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("🕒 В планы", callback_data=f"adm:s:set:{sid}:planned"),
+                InlineKeyboardButton("✅ Выполнено", callback_data=f"adm:s:set:{sid}:done"),
+            ],
+            [
+                InlineKeyboardButton("🆕 Вернуть в новые", callback_data=f"adm:s:set:{sid}:new"),
+                InlineKeyboardButton("❌ Отклонить", callback_data=f"adm:s:set:{sid}:rejected"),
+            ],
+            [InlineKeyboardButton("🗑 Удалить запись", callback_data=f"adm:s:delete:{sid}")],
+            [InlineKeyboardButton("⬅️ К предложениям", callback_data="adm:s:list:1")],
+        ]
+    )
+    await _admin_render(update, text, kb)
+
+
+async def show_admin_posts(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict, page: int = 1) -> None:
+    posts = list(data.get("posts", {}).items())
+    posts.sort(key=lambda x: int(x[0]) if str(x[0]).isdigit() else 0, reverse=True)
+    total_pages = max(1, (len(posts) + ADMIN_POST_PAGE_SIZE - 1) // ADMIN_POST_PAGE_SIZE)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * ADMIN_POST_PAGE_SIZE
+    chunk = posts[start : start + ADMIN_POST_PAGE_SIZE]
+    kb = []
+    for mid, info in chunk:
+        title_id = info.get("title_id") or "без тайтла"
+        kb.append([InlineKeyboardButton(f"#{mid} · {_short(title_id, 28)}", callback_data=f"adm:p:view:{mid}")])
+    nav = []
+    if page > 1:
+        nav.append(InlineKeyboardButton("⬅️", callback_data=f"adm:p:list:{page-1}"))
+    nav.append(InlineKeyboardButton(f"{page}/{total_pages}", callback_data="adm:p:noop"))
+    if page < total_pages:
+        nav.append(InlineKeyboardButton("➡️", callback_data=f"adm:p:list:{page+1}"))
+    kb.append(nav)
+    kb.extend(
+        [
+            [InlineKeyboardButton("➕ Создать через предпросмотр", callback_data="adm:post:new_draft")],
+            [InlineKeyboardButton("⚡ Опубликовать сразу", callback_data="adm:post:new_direct")],
+            [InlineKeyboardButton("⬅️ Админ-панель", callback_data="adm:home")],
+        ]
+    )
+    await _admin_render(
+        update,
+        f"📝 <b>Посты канала</b>\n\nВ реестре бота: <b>{len(posts)}</b>\nДля обычной работы безопаснее использовать предпросмотр.",
+        InlineKeyboardMarkup(kb),
+    )
+
+
+async def show_admin_post_card(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict, mid: str) -> None:
+    info = data.get("posts", {}).get(str(mid))
+    if not info:
+        await show_admin_posts(update, context, data, 1)
+        return
+    channel = CHANNEL_USERNAME.lstrip("@")
+    link = f"https://t.me/{channel}/{mid}"
+    caption = html_escape(_short(info.get("caption"), 500) or "—")
+    text = (
+        f"📝 <b>Пост #{mid}</b>\n\n"
+        f"🎬 Тайтл: <code>{html_escape(str(info.get('title_id') or 'не привязан'))}</code>\n"
+        f"📅 Создан: <b>{_fmt_time(info.get('created_at'))}</b>\n\n"
+        f"{caption}"
+    )
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton("🔗 Открыть в канале", url=link)],
+            [
+                InlineKeyboardButton("✏️ Редактировать", callback_data=f"adm:post:edit:{mid}"),
+                InlineKeyboardButton("♻️ Репост", callback_data=f"adm:p:repost:{mid}"),
+            ],
+            [InlineKeyboardButton("🔗 Привязать тайтл", callback_data=f"adm:p:link:{mid}")],
+            [InlineKeyboardButton("🗑 Удалить из канала", callback_data=f"adm:p:delete:{mid}")],
+            [InlineKeyboardButton("⬅️ К постам", callback_data="adm:p:list:1")],
+        ]
+    )
+    await _admin_render(update, text, kb)
+
+
+async def show_admin_access(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict) -> None:
+    all_admins = sorted(set(ADMINS) | set(data.get("admins", [])))
+    admin_lines = []
+    for aid in all_admins:
+        admin_lines.append(f"• <code>{aid}</code>{' · root' if aid in ADMINS else ''}")
+    text = (
+        "🔐 <b>Доступы и администраторы</b>\n\n"
+        f"💎 ACCESS_CODE_VIP: <b>{'настроен' if os.getenv('ACCESS_CODE_VIP', '').strip() else 'не задан'}</b>\n"
+        f"🤝 ACCESS_CODE_FRIEND: <b>{'настроен' if os.getenv('ACCESS_CODE_FRIEND', '').strip() else 'не задан'}</b>\n\n"
+        "🛡 <b>Администраторы</b>\n"
+        + ("\n".join(admin_lines) if admin_lines else "—")
+        + "\n\nЗначения секретных кодов панель намеренно не показывает."
+    )
+    rows = [
+        [
+            InlineKeyboardButton("🎟 Friend-приглашение", callback_data="adm:invite:friend"),
+            InlineKeyboardButton("💎 VIP-приглашение", callback_data="adm:invite:vip"),
+        ],
+    ]
+    if is_root_admin(update.effective_user.id):
+        rows.append([InlineKeyboardButton("➕ Добавить админа по ID", callback_data="adm:admin:add")])
+    rows.append([InlineKeyboardButton("⬅️ Админ-панель", callback_data="adm:home")])
+    await _admin_render(update, text, InlineKeyboardMarkup(rows))
+
+
+async def show_admin_system(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict) -> None:
+    try:
+        bot_member = await context.bot.get_chat_member(CHANNEL_USERNAME, context.bot.id)
+        channel_status = bot_member.status
+    except Exception:
+        channel_status = "не удалось проверить"
+    storage_dir = os.path.dirname(os.path.abspath(DATA_FILE)) or "."
+    try:
+        usage = shutil.disk_usage(storage_dir)
+        disk_text = f"{_fmt_bytes(usage.free)} свободно из {_fmt_bytes(usage.total)}"
+    except OSError:
+        disk_text = "не удалось определить"
+    text = (
+        "🧰 <b>Система</b>\n\n"
+        f"🤖 Бот: <b>@{html_escape(context.bot.username or '—')}</b>\n"
+        f"📣 Канал: <b>{html_escape(CHANNEL_USERNAME)}</b>\n"
+        f"🛡 Статус бота в канале: <b>{html_escape(str(channel_status))}</b>\n\n"
+        f"📁 Папка данных: <code>{html_escape(storage_dir)}</code>\n"
+        f"🗃 bot_data.json: <b>{_fmt_bytes(_safe_file_size(DATA_FILE))}</b>\n"
+        f"🎬 titles.json: <b>{_fmt_bytes(_safe_file_size(TITLES_FILE))}</b>\n"
+        f"💾 Диск: <b>{disk_text}</b>\n\n"
+        f"🔐 BOT_TOKEN: <b>{'задан' if BOT_TOKEN else 'не задан'}</b>\n"
+        f"🧹 Drop pending updates: <b>{DROP_PENDING_UPDATES}</b>"
+    )
+    kb = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton("💾 Сделать резервную копию", callback_data="adm:system:backup")],
+            [InlineKeyboardButton("🔄 Обновить статус", callback_data="adm:system")],
+            [InlineKeyboardButton("⬅️ Админ-панель", callback_data="adm:home")],
+        ]
+    )
+    await _admin_render(update, text, kb)
+
+
+async def show_admin_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict) -> None:
+    log = list(reversed(data.get("audit_log", [])[-20:]))
+    lines = ["📜 <b>Последние действия администраторов</b>", ""]
+    if not log:
+        lines.append("Журнал пока пуст.")
+    else:
+        for item in log:
+            action = html_escape(str(item.get("action", "—")))
+            target = html_escape(str(item.get("target", "")))
+            details = html_escape(str(item.get("details", "")))
+            suffix = f" · {target}" if target else ""
+            if details:
+                suffix += f" · {_short(details, 70)}"
+            lines.append(f"• {_fmt_time(item.get('ts'))} · <code>{item.get('admin_id')}</code> · <b>{action}</b>{suffix}")
+    rows = [[InlineKeyboardButton("🔄 Обновить", callback_data="adm:audit")]]
+    if is_root_admin(update.effective_user.id) and data.get("audit_log"):
+        rows.append([InlineKeyboardButton("🧹 Очистить журнал", callback_data="adm:audit:clear_confirm")])
+    rows.append([InlineKeyboardButton("⬅️ Админ-панель", callback_data="adm:home")])
+    await _admin_render(update, "\n".join(lines), InlineKeyboardMarkup(rows))
+
+
+async def admin_post_start_draft_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.callback_query.answer()
+    return await post_start_common(update, context, mode="draft")
+
+
+async def admin_post_start_direct_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.callback_query.answer()
+    return await post_start_common(update, context, mode="channel")
+
+
+async def admin_edit_post_start_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.callback_query.answer()
+    data = await load_data()
+    if not is_admin(data, update.effective_user.id):
+        await update.effective_message.reply_text("Эта операция доступна только администратору.")
+        return ConversationHandler.END
+    try:
+        msg_id = int(update.callback_query.data.rsplit(":", 1)[1])
+    except (ValueError, IndexError):
+        return ConversationHandler.END
+    context.user_data["edit_msg_id"] = msg_id
+    await update.effective_message.reply_text(
+        f"Редактирование поста <code>#{msg_id}</code>.\n\n"
+        "Шаг 1/4. Отправь новую обложку как фото или <code>-</code>, если обложку менять не нужно.\n"
+        "Для отмены: <code>/cancel</code>."
+    )
+    return EDIT_PHOTO
+
+
+async def handle_admin_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    pending = context.user_data.get("admin_pending")
+    if not pending:
+        return
+    data = await load_data()
+    admin_id = update.effective_user.id
+    if not is_admin(data, admin_id) or not _admin_private_chat(update):
+        context.user_data.pop("admin_pending", None)
+        return
+    text = (update.effective_message.text or "").strip()
+    action = pending.get("action")
+    context.user_data.pop("admin_pending", None)
+
+    if action == "title_search":
+        await _admin_title_search_results(update, text)
+        return
+
+    if action == "title_add":
+        if "|" not in text:
+            await update.effective_message.reply_text("Нужен формат: <code>Название | id</code>. Попробуй ещё раз через админ-панель.")
+            return
+        name, tid = [x.strip() for x in text.split("|", 1)]
+        tid = tid.lower()
+        if not name or not re.fullmatch(r"[a-z0-9_-]{2,32}", tid):
+            await update.effective_message.reply_text("ID должен состоять из a-z, 0-9, _ или - и быть длиной 2–32 символа.")
+            return
+        titles = await load_titles()
+        if tid in TITLES_BY_ID:
+            await update.effective_message.reply_text("Такой ID уже существует.")
+            return
+        title = {
+            "id": tid,
+            "name": name,
+            "season": "Сезон 1",
+            "status": "Вышел",
+            "episodes": "?",
+            "year": "----",
+            "studio": "-",
+            "author": "-",
+            "director": "-",
+            "voice": "-",
+            "shiki": "-",
+            "imdb": "-",
+            "kp": "-",
+            "genres": "-",
+            "playlist": "-",
+            "desc": "-",
+            "min_access": "free",
+            "hot": False,
+            "added_at": int(time.time()),
+        }
+        titles.append(title)
+        await save_titles(titles)
+        add_audit(data, admin_id, "title_add", tid, name)
+        await save_data(data)
+        await update.effective_message.reply_text(
+            f"✅ Тайтл <b>{html_escape(name)}</b> создан. Теперь заполни его поля.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✏️ Открыть тайтл", callback_data=f"adm:t:view:{tid}")]]),
+        )
+        return
+
+    if action == "title_edit":
+        tid = pending.get("title_id")
+        field = pending.get("field")
+        if field not in ADMIN_TITLE_FIELDS:
+            return
+        titles = await load_titles()
+        target = next((t for t in titles if t.get("id") == tid), None)
+        if not target:
+            await update.effective_message.reply_text("Тайтл больше не найден.")
+            return
+        value = "-" if text == "-" else text
+        if len(value) > (2200 if field == "desc" else 700):
+            await update.effective_message.reply_text("Значение слишком длинное.")
+            return
+        target[field] = value
+        await save_titles(titles)
+        add_audit(data, admin_id, "title_edit", tid, ADMIN_TITLE_FIELDS[field])
+        await save_data(data)
+        await update.effective_message.reply_text(
+            "✅ Поле обновлено.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ К тайтлу", callback_data=f"adm:t:view:{tid}")]]),
+        )
+        return
+
+    if action == "user_search":
+        await _admin_user_search_results(update, data, text)
+        return
+
+    if action == "user_message":
+        uid = int(pending.get("user_id"))
+        try:
+            await context.bot.send_message(chat_id=uid, text=text, parse_mode=None)
+            add_audit(data, admin_id, "user_message", str(uid), _short(text, 80))
+            await save_data(data)
+            await update.effective_message.reply_text("✅ Сообщение отправлено пользователю.")
+        except Exception:
+            logger.exception("Не удалось отправить сообщение пользователю %s", uid)
+            await update.effective_message.reply_text("Не удалось отправить сообщение. Возможно, пользователь заблокировал бота.")
+        return
+
+    if action == "post_link":
+        mid = str(pending.get("message_id"))
+        tid = text.lower()
+        await load_titles()
+        if tid not in TITLES_BY_ID:
+            await update.effective_message.reply_text("Тайтл с таким ID не найден.")
+            return
+        info = data.setdefault("posts", {}).setdefault(mid, {})
+        info["title_id"] = tid
+        info.setdefault("created_at", int(time.time()))
+        info.setdefault("caption", None)
+        add_audit(data, admin_id, "post_link", mid, tid)
+        await save_data(data)
+        await update.effective_message.reply_text(
+            "✅ Пост привязан к тайтлу.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ К посту", callback_data=f"adm:p:view:{mid}")]]),
+        )
+        return
+
+    if action == "broadcast":
+        if len(text) > 4000:
+            await update.effective_message.reply_text("Рассылка слишком длинная. Максимум — 4000 символов.")
+            return
+        context.user_data["admin_broadcast_text"] = text
+        kb = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("✅ Отправить всем активированным", callback_data="adm:broadcast:confirm")],
+                [InlineKeyboardButton("❌ Отмена", callback_data="adm:broadcast:cancel")],
+            ]
+        )
+        await update.effective_message.reply_text(
+            "📢 Предпросмотр рассылки:\n\n" + text,
+            reply_markup=kb,
+            parse_mode=None,
+        )
+        return
+
+    if action == "admin_add":
+        if not is_root_admin(admin_id):
+            return
+        try:
+            uid = int(text)
+        except ValueError:
+            await update.effective_message.reply_text("Telegram ID должен быть числом.")
+            return
+        admins = data.setdefault("admins", [])
+        if uid not in admins and uid not in ADMINS:
+            admins.append(uid)
+            add_audit(data, admin_id, "admin_add", str(uid))
+            await save_data(data)
+        await update.effective_message.reply_text("✅ Администратор добавлен.")
+        return
+
+
+async def _create_admin_access_invite(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict, level: str) -> None:
+    token = f"access_{secrets.token_urlsafe(24)}"
+    key = invite_storage_key(token)
+    data.setdefault("invites", {})[key] = {
+        "type": "access",
+        "level": level,
+        "created_by": update.effective_user.id,
+        "created_at": int(time.time()),
+        "uses": 0,
+        "max_uses": 1,
+    }
+    add_audit(data, update.effective_user.id, "invite_create", level, "1 use")
+    await save_data(data)
+    link = f"https://t.me/{context.bot.username}?start={token}"
+    await update.effective_message.reply_text(
+        f"🎟 Одноразовое приглашение уровня <b>{level}</b>:\n<code>{link}</code>"
+    )
+
+
+async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, data: dict, data_str: str) -> None:
+    admin_id = update.effective_user.id
+    if not is_admin(data, admin_id):
+        await update.effective_message.reply_text("Нет доступа к админ-панели.")
+        return
+    if not _admin_private_chat(update):
+        await update.effective_message.reply_text("Админ-панель работает только в личном чате.")
+        return
+
+    if data_str in {"adm:t:noop", "adm:u:noop", "adm:s:noop", "adm:p:noop"}:
+        return
+
+    if data_str == "adm:home":
+        context.user_data.pop("admin_pending", None)
+        await show_admin_home(update, context, data)
+        return
+    if data_str == "adm:dash":
+        await show_admin_dashboard(update, context, data)
+        return
+
+    if data_str.startswith("adm:t:list:"):
+        await show_admin_titles(update, context, data, int(data_str.rsplit(":", 1)[1]))
+        return
+    if data_str == "adm:t:add":
+        context.user_data["admin_pending"] = {"action": "title_add"}
+        await update.effective_message.reply_text(
+            "➕ Отправь одной строкой:\n<code>Название тайтла | id_taitla</code>\n\n"
+            "Например: <code>Монолог фармацевта | kusuriya_no_hitorigoto</code>"
+        )
+        return
+    if data_str == "adm:t:search":
+        context.user_data["admin_pending"] = {"action": "title_search"}
+        await update.effective_message.reply_text("🔎 Отправь название или ID тайтла.")
+        return
+    if data_str.startswith("adm:t:view:"):
+        await show_admin_title_card(update, context, data, data_str.split(":", 3)[3])
+        return
+    if data_str.startswith("adm:t:fields:"):
+        await show_admin_title_fields(update, context, data, data_str.split(":", 3)[3])
+        return
+    if data_str.startswith("adm:t:field:"):
+        _, _, _, tid, field = data_str.split(":", 4)
+        if field not in ADMIN_TITLE_FIELDS:
+            return
+        context.user_data["admin_pending"] = {"action": "title_edit", "title_id": tid, "field": field}
+        await update.effective_message.reply_text(
+            f"✏️ Новое значение для <b>{ADMIN_TITLE_FIELDS[field]}</b>:\n"
+            "Отправь текст одним сообщением. <code>-</code> — оставить прочерк."
+        )
+        return
+    if data_str.startswith("adm:t:hot:"):
+        tid = data_str.split(":", 3)[3]
+        titles = await load_titles()
+        t = next((x for x in titles if x.get("id") == tid), None)
+        if t:
+            t["hot"] = not bool(t.get("hot"))
+            await save_titles(titles)
+            add_audit(data, admin_id, "title_hot", tid, str(t["hot"]))
+            await save_data(data)
+        await show_admin_title_card(update, context, data, tid)
+        return
+    if data_str.startswith("adm:t:access:"):
+        tid = data_str.split(":", 3)[3]
+        titles = await load_titles()
+        t = next((x for x in titles if x.get("id") == tid), None)
+        if t:
+            levels = ["free", "friend", "vip"]
+            current = t.get("min_access", "free")
+            t["min_access"] = levels[(levels.index(current) + 1) % len(levels)] if current in levels else "free"
+            await save_titles(titles)
+            add_audit(data, admin_id, "title_access", tid, t["min_access"])
+            await save_data(data)
+        await show_admin_title_card(update, context, data, tid)
+        return
+    if data_str.startswith("adm:t:preview:"):
+        tid = data_str.split(":", 3)[3]
+        await load_titles()
+        t = TITLES_BY_ID.get(tid)
+        if t:
+            await update.effective_message.reply_text(build_premium_card(t), reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ В админку тайтла", callback_data=f"adm:t:view:{tid}")]]))
+        return
+    if data_str.startswith("adm:t:delete_yes:"):
+        tid = data_str.split(":", 3)[3]
+        titles = [t for t in await load_titles() if t.get("id") != tid]
+        await save_titles(titles)
+        for u in data.get("users", {}).values():
+            if tid in u.get("favorites", []):
+                u["favorites"] = [x for x in u.get("favorites", []) if x != tid]
+            if tid in u.get("watched_150", []):
+                u["watched_150"] = [x for x in u.get("watched_150", []) if x != tid]
+            statuses = u.get("title_statuses", {})
+            if isinstance(statuses, dict):
+                statuses.pop(tid, None)
+        for info in data.get("posts", {}).values():
+            if info.get("title_id") == tid:
+                info["title_id"] = None
+        add_audit(data, admin_id, "title_delete", tid)
+        await save_data(data)
+        await show_admin_titles(update, context, data, 1)
+        return
+    if data_str.startswith("adm:t:delete:"):
+        tid = data_str.split(":", 3)[3]
+        kb = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("⚠️ Да, удалить", callback_data=f"adm:t:delete_yes:{tid}")],
+                [InlineKeyboardButton("Отмена", callback_data=f"adm:t:view:{tid}")],
+            ]
+        )
+        await _admin_render(update, f"⚠️ Удалить тайтл <code>{html_escape(tid)}</code>?\nБудут очищены ссылки из пользовательских списков и постов.", kb)
+        return
+
+    if data_str.startswith("adm:u:list:"):
+        await show_admin_users(update, context, data, int(data_str.rsplit(":", 1)[1]))
+        return
+    if data_str == "adm:u:search":
+        context.user_data["admin_pending"] = {"action": "user_search"}
+        await update.effective_message.reply_text("🔎 Отправь Telegram ID, @username или часть имени.")
+        return
+    if data_str.startswith("adm:u:view:"):
+        await show_admin_user_card(update, context, data, data_str.split(":", 3)[3])
+        return
+    if data_str.startswith("adm:u:access:"):
+        _, _, _, uid, level = data_str.split(":", 4)
+        if level in ACCESS_LEVELS:
+            u = get_user(data, int(uid))
+            u["access"] = level
+            add_audit(data, admin_id, "user_access", uid, level)
+            await save_data(data)
+        await show_admin_user_card(update, context, data, uid)
+        return
+    if data_str.startswith("adm:u:ban:"):
+        uid = data_str.split(":", 3)[3]
+        if not is_root_admin(int(uid)):
+            data.setdefault("banned", {})[uid] = True
+            add_audit(data, admin_id, "user_ban", uid)
+            await save_data(data)
+        await show_admin_user_card(update, context, data, uid)
+        return
+    if data_str.startswith("adm:u:unban:"):
+        uid = data_str.split(":", 3)[3]
+        data.setdefault("banned", {}).pop(uid, None)
+        add_audit(data, admin_id, "user_unban", uid)
+        await save_data(data)
+        await show_admin_user_card(update, context, data, uid)
+        return
+    if data_str.startswith("adm:u:message:"):
+        uid = data_str.split(":", 3)[3]
+        context.user_data["admin_pending"] = {"action": "user_message", "user_id": uid}
+        await update.effective_message.reply_text(f"✉️ Отправь текст сообщения для пользователя <code>{uid}</code>.")
+        return
+    if data_str.startswith("adm:u:promote:") and is_root_admin(admin_id):
+        uid = int(data_str.split(":", 3)[3])
+        admins = data.setdefault("admins", [])
+        if uid not in admins and uid not in ADMINS:
+            admins.append(uid)
+            add_audit(data, admin_id, "admin_add", str(uid))
+            await save_data(data)
+        await show_admin_user_card(update, context, data, str(uid))
+        return
+    if data_str.startswith("adm:u:demote:") and is_root_admin(admin_id):
+        uid = int(data_str.split(":", 3)[3])
+        if uid not in ADMINS:
+            data["admins"] = [x for x in data.get("admins", []) if x != uid]
+            add_audit(data, admin_id, "admin_remove", str(uid))
+            await save_data(data)
+        await show_admin_user_card(update, context, data, str(uid))
+        return
+
+    if data_str.startswith("adm:s:list:"):
+        await show_admin_suggestions(update, context, data, int(data_str.rsplit(":", 1)[1]))
+        return
+    if data_str.startswith("adm:s:view:"):
+        await show_admin_suggestion_card(update, context, data, data_str.split(":", 3)[3])
+        return
+    if data_str.startswith("adm:s:set:"):
+        _, _, _, sid, status = data_str.split(":", 4)
+        if status not in SUGGESTION_STATUS_LABELS:
+            return
+        item = data.get("suggestions", {}).get(sid)
+        if item:
+            item["status"] = status
+            item["updated_at"] = int(time.time())
+            add_audit(data, admin_id, "suggestion_status", sid, status)
+            await save_data(data)
+            try:
+                await context.bot.send_message(
+                    chat_id=item.get("user_id"),
+                    text=f"📩 Статус твоего предложения #{sid} изменён: {SUGGESTION_STATUS_LABELS[status]}",
+                )
+            except Exception:
+                pass
+        await show_admin_suggestion_card(update, context, data, sid)
+        return
+    if data_str.startswith("adm:s:delete:"):
+        sid = data_str.split(":", 3)[3]
+        if sid in data.get("suggestions", {}):
+            data["suggestions"].pop(sid, None)
+            add_audit(data, admin_id, "suggestion_delete", sid)
+            await save_data(data)
+        await show_admin_suggestions(update, context, data, 1)
+        return
+
+    if data_str.startswith("adm:p:list:"):
+        await show_admin_posts(update, context, data, int(data_str.rsplit(":", 1)[1]))
+        return
+    if data_str.startswith("adm:p:view:"):
+        await show_admin_post_card(update, context, data, data_str.split(":", 3)[3])
+        return
+    if data_str.startswith("adm:p:link:"):
+        mid = data_str.split(":", 3)[3]
+        context.user_data["admin_pending"] = {"action": "post_link", "message_id": mid}
+        await update.effective_message.reply_text("🔗 Отправь ID тайтла, который нужно привязать к посту.")
+        return
+    if data_str.startswith("adm:p:repost:"):
+        mid = data_str.split(":", 3)[3]
+        try:
+            m = await context.bot.copy_message(chat_id=CHANNEL_USERNAME, from_chat_id=CHANNEL_USERNAME, message_id=int(mid))
+        except Exception:
+            logger.exception("Не удалось сделать репост поста %s", mid)
+            await update.effective_message.reply_text("Не удалось пересоздать пост. Проверь права бота и существование сообщения.")
+            return
+        old = data.get("posts", {}).get(mid, {})
+        data.setdefault("posts", {})[str(m.message_id)] = {
+            "title_id": old.get("title_id"),
+            "created_at": int(time.time()),
+            "caption": old.get("caption"),
+        }
+        data["stats"]["reposts"] += 1
+        data["stats"]["posts_created"] += 1
+        add_audit(data, admin_id, "post_repost", mid, str(m.message_id))
+        await save_data(data)
+        await update.effective_message.reply_text(f"✅ Создан новый пост #{m.message_id}.")
+        return
+    if data_str.startswith("adm:p:delete_yes:"):
+        mid = data_str.split(":", 3)[3]
+        try:
+            await context.bot.delete_message(chat_id=CHANNEL_USERNAME, message_id=int(mid))
+        except Exception:
+            logger.exception("Не удалось удалить пост %s", mid)
+            await update.effective_message.reply_text("Не удалось удалить пост из канала. Проверь права бота.")
+            return
+        data.get("posts", {}).pop(mid, None)
+        add_audit(data, admin_id, "post_delete", mid)
+        await save_data(data)
+        await show_admin_posts(update, context, data, 1)
+        return
+    if data_str.startswith("adm:p:delete:"):
+        mid = data_str.split(":", 3)[3]
+        await _admin_render(
+            update,
+            f"⚠️ Удалить пост <b>#{mid}</b> из канала? Это действие нельзя отменить.",
+            InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🗑 Да, удалить", callback_data=f"adm:p:delete_yes:{mid}")],
+                    [InlineKeyboardButton("Отмена", callback_data=f"adm:p:view:{mid}")],
+                ]
+            ),
+        )
+        return
+
+    if data_str == "adm:broadcast:start":
+        context.user_data["admin_pending"] = {"action": "broadcast"}
+        context.user_data.pop("admin_broadcast_text", None)
+        await update.effective_message.reply_text(
+            "📢 Отправь текст рассылки одним сообщением.\n\n"
+            "Перед отправкой всем пользователям бот обязательно покажет предпросмотр и попросит подтверждение."
+        )
+        return
+    if data_str == "adm:broadcast:cancel":
+        context.user_data.pop("admin_broadcast_text", None)
+        await show_admin_home(update, context, data)
+        return
+    if data_str == "adm:broadcast:confirm":
+        message = context.user_data.pop("admin_broadcast_text", None)
+        if not message:
+            await update.effective_message.reply_text("Текст рассылки не найден. Создай рассылку заново.")
+            return
+        recipients = [int(uid) for uid, u in data.get("users", {}).items() if u.get("activated") and not data.get("banned", {}).get(uid)]
+        sent = 0
+        failed = 0
+        progress = await update.effective_message.reply_text(f"📢 Рассылка началась. Получателей: {len(recipients)}")
+        for uid in recipients:
+            try:
+                await context.bot.send_message(chat_id=uid, text=message, parse_mode=None)
+                sent += 1
+            except Exception:
+                failed += 1
+            await asyncio.sleep(0.04)
+        data["stats"]["broadcasts_sent"] += 1
+        data["stats"]["broadcast_recipients"] += sent
+        add_audit(data, admin_id, "broadcast", "all", f"sent={sent}, failed={failed}")
+        await save_data(data)
+        await progress.edit_text(f"✅ Рассылка завершена.\nДоставлено: <b>{sent}</b>\nОшибок: <b>{failed}</b>")
+        return
+
+    if data_str == "adm:access":
+        await show_admin_access(update, context, data)
+        return
+    if data_str == "adm:invite:friend":
+        await _create_admin_access_invite(update, context, data, "friend")
+        return
+    if data_str == "adm:invite:vip":
+        await _create_admin_access_invite(update, context, data, "vip")
+        return
+    if data_str == "adm:admin:add" and is_root_admin(admin_id):
+        context.user_data["admin_pending"] = {"action": "admin_add"}
+        await update.effective_message.reply_text("Отправь Telegram ID нового администратора.")
+        return
+
+    if data_str == "adm:system":
+        await show_admin_system(update, context, data)
+        return
+    if data_str == "adm:system:backup":
+        storage_dir = os.path.dirname(os.path.abspath(DATA_FILE)) or "."
+        backup_dir = os.path.join(storage_dir, "backups")
+        os.makedirs(backup_dir, exist_ok=True)
+        stamp = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+        copied = []
+        for src, label in ((DATA_FILE, "bot_data"), (TITLES_FILE, "titles")):
+            if os.path.exists(src):
+                dst = os.path.join(backup_dir, f"{label}_{stamp}.json")
+                shutil.copy2(src, dst)
+                set_private_permissions(dst)
+                copied.append(os.path.basename(dst))
+        add_audit(data, admin_id, "backup", "system", ", ".join(copied))
+        await save_data(data)
+        await update.effective_message.reply_text(
+            "💾 Резервная копия создана.\n" + "\n".join(f"• <code>{html_escape(x)}</code>" for x in copied)
+        )
+        return
+
+    if data_str == "adm:audit":
+        await show_admin_audit(update, context, data)
+        return
+    if data_str == "adm:audit:clear_confirm" and is_root_admin(admin_id):
+        await _admin_render(
+            update,
+            "⚠️ Очистить журнал действий администраторов?",
+            InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("Да, очистить", callback_data="adm:audit:clear_yes")],
+                    [InlineKeyboardButton("Отмена", callback_data="adm:audit")],
+                ]
+            ),
+        )
+        return
+    if data_str == "adm:audit:clear_yes" and is_root_admin(admin_id):
+        data["audit_log"] = []
+        add_audit(data, admin_id, "audit_clear")
+        await save_data(data)
+        await show_admin_audit(update, context, data)
+        return
 
 
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -2396,6 +3596,10 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     tg_user = update.effective_user
     user_data = get_user(data, user_id)
     update_user_names(data, user_id, tg_user)
+
+    if data_str.startswith("adm:"):
+        await handle_admin_callback(update, context, data, data_str)
+        return
 
     await load_titles()
 
@@ -2462,6 +3666,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         }
         data["posts"] = posts
         data["stats"]["posts_created"] += 1
+        add_audit(data, user_id, "draft_publish", str(m.message_id))
         await save_data(data)
 
         context.user_data.pop("draft_post", None)
@@ -2589,6 +3794,11 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
 
+def is_valid_button_url(value: str) -> bool:
+    value = (value or "").strip()
+    return bool(re.fullmatch(r"https?://[^\s]+", value))
+
+
 POST_PHOTO, POST_CAPTION, POST_DESC, POST_WATCH = range(4)
 EDIT_PHOTO, EDIT_CAPTION, EDIT_DESC, EDIT_WATCH = range(4, 8)
 
@@ -2642,7 +3852,13 @@ async def post_get_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def post_get_caption(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["post_caption"] = update.message.text or ""
+    caption = update.message.text or ""
+    if len(caption) > 1024:
+        await update.effective_message.reply_text(
+            f"Подпись слишком длинная: {len(caption)}/1024 символов. Сократи текст и отправь снова."
+        )
+        return POST_CAPTION
+    context.user_data["post_caption"] = caption
     await update.effective_message.reply_text(
         "Шаг 3/4.\nВставь ссылку на описание (Telegraph).\n"
         "Если описания пока нет — напиши <code>-</code>."
@@ -2654,6 +3870,11 @@ async def post_get_desc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     desc_link = (update.message.text or "").strip()
     if desc_link == "-":
         desc_link = None
+    elif not is_valid_button_url(desc_link):
+        await update.effective_message.reply_text(
+            "Нужна полная ссылка вида <code>https://...</code> или <code>-</code>."
+        )
+        return POST_DESC
     context.user_data["post_desc_link"] = desc_link
 
     await update.effective_message.reply_text(
@@ -2673,6 +3894,11 @@ async def post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     watch_link = (update.message.text or "").strip()
     if watch_link == "-":
         watch_link = None
+    elif not is_valid_button_url(watch_link):
+        await update.effective_message.reply_text(
+            "Нужна полная ссылка вида <code>https://...</code> или <code>-</code>."
+        )
+        return POST_WATCH
 
     photo = context.user_data.get("post_photo")
     caption = context.user_data.get("post_caption", "")
@@ -2707,6 +3933,7 @@ async def post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 "caption": caption,
             }
             data["posts"] = posts
+            add_audit(data, update.effective_user.id, "post_publish", str(m.message_id))
             await save_data(data)
             await update.effective_message.reply_text("Пост отправлен в канал ✅")
         else:
@@ -2718,6 +3945,7 @@ async def post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             }
             context.user_data["draft_post"] = draft
             data["stats"]["drafts_created"] += 1
+            add_audit(data, update.effective_user.id, "draft_create")
             await save_data(data)
 
             kb = InlineKeyboardMarkup(
@@ -2828,6 +4056,11 @@ async def edit_post_get_photo(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def edit_post_get_caption(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     caption = update.message.text or ""
+    if len(caption) > 1024:
+        await update.effective_message.reply_text(
+            f"Подпись слишком длинная: {len(caption)}/1024 символов. Сократи текст и отправь снова."
+        )
+        return EDIT_CAPTION
     context.user_data["edit_caption"] = caption.strip()
     await update.effective_message.reply_text(
         "Шаг 3/4.\n"
@@ -2841,6 +4074,11 @@ async def edit_post_get_desc(update: Update, context: ContextTypes.DEFAULT_TYPE)
     desc_link = (update.message.text or "").strip()
     if desc_link == "-":
         desc_link = None
+    elif not is_valid_button_url(desc_link):
+        await update.effective_message.reply_text(
+            "Нужна полная ссылка вида <code>https://...</code> или <code>-</code>."
+        )
+        return EDIT_DESC
     context.user_data["edit_desc_link"] = desc_link
     await update.effective_message.reply_text(
         "Шаг 4/4.\n"
@@ -2857,6 +4095,11 @@ async def edit_post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE
     watch_link = (update.message.text or "").strip()
     if watch_link == "-":
         watch_link = None
+    elif not is_valid_button_url(watch_link):
+        await update.effective_message.reply_text(
+            "Нужна полная ссылка вида <code>https://...</code> или <code>-</code>."
+        )
+        return EDIT_WATCH
 
     msg_id = context.user_data.get("edit_msg_id")
     new_photo = context.user_data.get("edit_photo")
@@ -2913,6 +4156,7 @@ async def edit_post_get_watch(update: Update, context: ContextTypes.DEFAULT_TYPE
         data["posts"] = posts
 
         data["stats"]["posts_edited"] += 1
+        add_audit(data, update.effective_user.id, "post_edit", str(msg_id))
         await save_data(data)
 
         for key in ["edit_msg_id", "edit_photo", "edit_caption", "edit_desc_link"]:
@@ -2959,6 +4203,7 @@ async def handle_link_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     info.setdefault("caption", None)
     posts[str(msg_id)] = info
     data["posts"] = posts
+    add_audit(data, user_id, "post_link_command", str(msg_id), tid)
     await save_data(data)
 
     await update.effective_message.reply_text(f"Пост с ID <code>{msg_id}</code> привязан к тайтлу «{title['name']}».")
@@ -3017,6 +4262,7 @@ async def handle_repost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         data["stats"]["reposts"] += 1
         data["stats"]["posts_created"] += 1
         data["posts"] = posts
+        add_audit(data, user_id, "post_repost_command", str(msg_id), str(m.message_id))
         await save_data(data)
 
         await update.effective_message.reply_text(f"Пост пересоздан в канале ✅\nНовый ID: <code>{m.message_id}</code>")
@@ -3052,6 +4298,8 @@ def main() -> None:
         entry_points=[
             CommandHandler("post", post_start),
             CommandHandler("post_draft", post_start_draft),
+            CallbackQueryHandler(admin_post_start_draft_cb, pattern=r"^adm:post:new_draft$"),
+            CallbackQueryHandler(admin_post_start_direct_cb, pattern=r"^adm:post:new_direct$"),
         ],
         states={
             POST_PHOTO: [MessageHandler(filters.PHOTO & ~filters.COMMAND, post_get_photo)],
@@ -3063,7 +4311,10 @@ def main() -> None:
     )
 
     conv_edit = ConversationHandler(
-        entry_points=[CommandHandler("edit_post", edit_post_start)],
+        entry_points=[
+            CommandHandler("edit_post", edit_post_start),
+            CallbackQueryHandler(admin_edit_post_start_cb, pattern=r"^adm:post:edit:\d+$"),
+        ],
         states={
             EDIT_PHOTO: [MessageHandler((filters.PHOTO | filters.TEXT) & ~filters.COMMAND, edit_post_get_photo)],
             EDIT_CAPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_post_get_caption)],
@@ -3079,6 +4330,7 @@ def main() -> None:
     application.add_handler(CommandHandler("start", handle_start))
     application.add_handler(CommandHandler("menu", handle_menu))
     application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("admin", admin_command))
     application.add_handler(CommandHandler("code", handle_code))
     application.add_handler(CommandHandler("profile", handle_profile))
     application.add_handler(CommandHandler("favorites", handle_favorites))
@@ -3103,6 +4355,7 @@ def main() -> None:
     application.add_handler(CommandHandler("admin_list", handle_admin_list))
     application.add_handler(CommandHandler("add_admin", handle_add_admin))
     application.add_handler(CommandHandler("remove_admin", handle_remove_admin))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_admin_text_input))
     application.add_handler(CallbackQueryHandler(handle_buttons))
     application.add_error_handler(handle_unexpected_error)
 
