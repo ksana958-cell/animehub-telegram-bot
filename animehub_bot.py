@@ -5,6 +5,7 @@ from telegram import (
     InputMediaPhoto,
 )
 from telegram.constants import ParseMode
+from telegram.error import InvalidToken
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -50,12 +51,17 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+DATA_DIR = os.getenv("DATA_DIR", ".").strip() or "."
+
 CONFIG = {
     # Секреты никогда не храним в Git. BOT_TOKEN задаётся только в панели хостинга / env.
     "BOT_TOKEN": os.getenv("BOT_TOKEN", "").strip(),
     "CHANNEL_USERNAME": os.getenv("CHANNEL_USERNAME", "@AnimeHUB_Dream").strip(),
-    "DATA_FILE": os.getenv("DATA_FILE", "bot_data.json").strip(),
-    "TITLES_FILE": os.getenv("TITLES_FILE", "titles.json").strip(),
+    # На BotHost DATA_DIR=/app/data. Если DATA_FILE/TITLES_FILE не переопределены,
+    # база и каталог автоматически хранятся в постоянном volume.
+    "DATA_DIR": DATA_DIR,
+    "DATA_FILE": os.getenv("DATA_FILE", os.path.join(DATA_DIR, "bot_data.json")).strip(),
+    "TITLES_FILE": os.getenv("TITLES_FILE", os.path.join(DATA_DIR, "titles.json")).strip(),
     # Telegram ID сам по себе не является секретом. Можно переопределить через ROOT_ADMIN_IDS.
     "ADMINS": _env_int_list("ROOT_ADMIN_IDS", [813738453]),
     "DROP_PENDING_UPDATES": _env_bool("DROP_PENDING_UPDATES", True),
@@ -63,6 +69,7 @@ CONFIG = {
 
 BOT_TOKEN = CONFIG["BOT_TOKEN"]
 CHANNEL_USERNAME = CONFIG["CHANNEL_USERNAME"]
+DATA_DIR = CONFIG["DATA_DIR"]
 DATA_FILE = CONFIG["DATA_FILE"]
 TITLES_FILE = CONFIG["TITLES_FILE"]
 ADMINS = CONFIG["ADMINS"]
@@ -112,6 +119,16 @@ def validate_runtime_config() -> None:
         raise RuntimeError("CHANNEL_USERNAME должен быть в формате @channel_username")
     if not ADMINS:
         raise RuntimeError("Не задан ни один root-admin. Укажите ROOT_ADMIN_IDS.")
+
+    # Проверяем/создаём директории для постоянных данных заранее.
+    for storage_path in (DATA_FILE, TITLES_FILE):
+        parent = os.path.dirname(os.path.abspath(storage_path))
+        try:
+            os.makedirs(parent, exist_ok=True)
+        except OSError as exc:
+            raise RuntimeError(
+                f"Не удалось подготовить директорию данных: {parent}"
+            ) from exc
 
 ACCESS_LEVELS = {
     "free": 0,
@@ -1384,22 +1401,6 @@ async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     args = context.args
     if args:
         arg0 = args[0].strip()
-        if arg0.lower() == "activate":
-            user_data["activated"] = True
-            await save_data(data)
-            text = (
-                "⚡ Профиль активирован!\n\n"
-                f"Твой Telegram ID: <code>{user_id}</code>\n\n"
-                "Теперь ты можешь:\n"
-                "• Добавлять друзей через /friend_invite\n"
-                "• Смотреть входящие заявки: /friend_requests\n"
-                "• Список друзей: /friend_list\n\n"
-                "Нажми кнопку ниже, чтобы открыть главное меню."
-            )
-            kb = InlineKeyboardMarkup([[InlineKeyboardButton("📚 Открыть главное меню", callback_data="main_menu")]])
-            await update.effective_message.reply_text(text, reply_markup=kb)
-            return
-
         if arg0.startswith("friend_"):
             token = arg0
             invites = data.get("invites", {})
@@ -2412,6 +2413,88 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             await query.message.reply_text("Я пока не вижу подписку на канал.\n\nПодпишись, подожди пару секунд и нажми кнопку ещё раз.")
         return
 
+    if data_str == "draft_publish":
+        if not is_admin(data, user_id):
+            await query.answer("Эта кнопка доступна только администратору.", show_alert=True)
+            return
+
+        draft = context.user_data.get("draft_post")
+        if not draft:
+            try:
+                await query.edit_message_reply_markup(reply_markup=None)
+            except Exception:
+                pass
+            await query.message.reply_text(
+                "Черновик уже опубликован, отменён или потерян после перезапуска бота."
+            )
+            return
+
+        photo = draft.get("photo")
+        caption = draft.get("caption", "")
+        markup = draft.get("reply_markup")
+        title_id = draft.get("title_id")
+
+        if not photo:
+            context.user_data.pop("draft_post", None)
+            await query.message.reply_text("Черновик повреждён: отсутствует изображение.")
+            return
+
+        try:
+            m = await context.bot.send_photo(
+                chat_id=CHANNEL_USERNAME,
+                photo=photo,
+                caption=caption,
+                reply_markup=markup,
+            )
+        except Exception:
+            logger.exception("Не удалось опубликовать черновик в канал")
+            await query.message.reply_text(
+                "Не удалось опубликовать черновик. Проверь права бота в канале. "
+                "Технические детали записаны в серверный лог."
+            )
+            return
+
+        posts = data.get("posts", {})
+        posts[str(m.message_id)] = {
+            "title_id": title_id,
+            "created_at": int(time.time()),
+            "caption": caption,
+        }
+        data["posts"] = posts
+        data["stats"]["posts_created"] += 1
+        await save_data(data)
+
+        context.user_data.pop("draft_post", None)
+        try:
+            await query.edit_message_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+
+        await query.message.reply_text(
+            f"Пост опубликован в канал ✅\nID сообщения: <code>{m.message_id}</code>"
+        )
+        return
+
+    if data_str == "draft_cancel":
+        if not is_admin(data, user_id):
+            await query.answer("Эта кнопка доступна только администратору.", show_alert=True)
+            return
+
+        context.user_data.pop("draft_post", None)
+        try:
+            await query.message.delete()
+        except Exception:
+            try:
+                await query.edit_message_reply_markup(reply_markup=None)
+            except Exception:
+                pass
+
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Черновик отменён ❌",
+        )
+        return
+
     if data_str == "main_menu":
         await show_main_menu(update, context, data)
         return
@@ -3028,7 +3111,16 @@ def main() -> None:
             "ACCESS_CODE_VIP / ACCESS_CODE_FRIEND не заданы: команда /code не выдаст повышенный доступ."
         )
 
-    application.run_polling(drop_pending_updates=DROP_PENDING_UPDATES)
+    try:
+        application.run_polling(drop_pending_updates=DROP_PENDING_UPDATES)
+    except InvalidToken:
+        # Не пробрасываем исходное исключение наружу: некоторые версии библиотеки
+        # включают сам BOT_TOKEN в текст InvalidToken.
+        logger.critical(
+            "Telegram отклонил BOT_TOKEN. Проверьте значение BOT_TOKEN "
+            "в переменных окружения хостинга."
+        )
+        raise SystemExit(2)
 
 
 if __name__ == "__main__":
